@@ -132,9 +132,9 @@ const Index = () => {
             </h2>
             
             <p className="mb-12 text-xl text-muted-foreground lg:text-2xl max-w-4xl mx-auto animate-fade-in-up leading-relaxed">
-              We automatically extract and analyze insights from the world's top financial minds across 
+              We extract and analyze insights from the world's top financial minds across 
               YouTube, newsletters, Twitter, and private platforms — delivering instant summaries 
-              <span className="font-semibold text-accent">FOR YOU</span> the moment new content drops.
+              the moment new content drops.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-scale-in">
