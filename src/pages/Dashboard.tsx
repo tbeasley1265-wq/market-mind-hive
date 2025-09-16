@@ -1,4 +1,7 @@
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,17 +20,22 @@ import {
   Calendar,
   Settings,
   MessageSquare,
-  Mail
+  Mail,
+  LogOut,
+  Bookmark
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
 import EmailContentFilter from "@/components/content/EmailContentFilter";
 import EmailIntegrationModal from "@/components/email/EmailIntegrationModal";
 import ChatInterface from "@/components/chat/ChatInterface";
+import VideoProcessor from "@/components/content/VideoProcessor";
 import Header from "@/components/layout/Header";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showChat, setShowChat] = useState(false);
@@ -36,27 +44,145 @@ const Dashboard = () => {
   const [processedEmails, setProcessedEmails] = useState<any[]>([]);
   const [filteredEmails, setFilteredEmails] = useState<any[]>([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showVideoProcessor, setShowVideoProcessor] = useState(false);
+  const [contentItems, setContentItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
+
+  // Fetch content items from database
+  useEffect(() => {
+    const fetchContentItems = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('content_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setContentItems(data || []);
+      } catch (error) {
+        console.error('Error fetching content:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContentItems();
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const handleAskAI = (title: string, url?: string) => {
     setSelectedContent({ title, url });
     setShowChat(true);
   };
 
-  const handleSave = (title: string) => {
-    toast({
-      title: "Saved",
-      description: `"${title}" has been saved to your bookmarks.`,
-    });
+  const handleSave = async (title: string, content: any) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('content_items')
+        .insert({
+          user_id: user.id,
+          title: content.title,
+          content_type: content.platform || 'article',
+          platform: content.source || 'unknown',
+          author: content.author,
+          summary: content.summary,
+          metadata: {
+            tags: content.tags,
+            sentiment: content.sentiment,
+            originalUrl: content.originalUrl
+          },
+          original_url: content.originalUrl,
+          is_bookmarked: true
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Saved",
+        description: `"${title}" has been saved to your bookmarks.`,
+      });
+
+      // Refresh content items
+      const { data } = await supabase
+        .from('content_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      setContentItems(data || []);
+    } catch (error) {
+      console.error('Error saving content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save content. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDocumentProcessed = (result: any) => {
+  const handleDocumentProcessed = async (result: any) => {
+    if (!user) return;
+
     if (result.success && result.data) {
-      setProcessedDocuments(prev => [result.data, ...prev]);
-      toast({
-        title: "Document Added",
-        description: `"${result.data.title}" has been processed and added to your content.`,
-      });
+      try {
+        // Save to database
+        const { error } = await supabase
+          .from('content_items')
+          .insert({
+            user_id: user.id,
+            title: result.data.title,
+            content_type: 'document',
+            platform: 'uploaded',
+            summary: result.data.summary,
+            metadata: {
+              tags: result.data.tags,
+              sentiment: result.data.sentiment,
+              file_type: result.data.file_type
+            }
+          });
+
+        if (error) throw error;
+
+        setProcessedDocuments(prev => [result.data, ...prev]);
+        
+        // Refresh content items
+        const { data } = await supabase
+          .from('content_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        setContentItems(data || []);
+
+        toast({
+          title: "Document Added",
+          description: `"${result.data.title}" has been processed and added to your content.`,
+        });
+      } catch (error) {
+        console.error('Error saving document:', error);
+        toast({
+          title: "Error",
+          description: "Document processed but failed to save. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -140,8 +266,34 @@ const Dashboard = () => {
     }
   ];
 
-  // Combine processed documents, emails, and mock content
-  const allContent = [...processedDocuments, ...processedEmails, ...mockContent];
+  const handleVideoProcessed = (result: any) => {
+    if (result.success && result.data) {
+      setProcessedDocuments(prev => [result.data, ...prev]);
+      toast({
+        title: "Video Added",
+        description: `"${result.data.title}" has been processed and added to your content.`,
+      });
+    }
+  };
+
+  // Combine processed documents, emails, content items, and mock content
+  const allContent = [
+    ...contentItems.map(item => ({
+      title: item.title,
+      source: item.platform,
+      platform: item.content_type as 'youtube' | 'substack' | 'email',
+      author: item.author || 'Unknown',
+      timestamp: new Date(item.created_at).toLocaleString(),
+      summary: item.summary || '',
+      tags: item.metadata?.tags || [],
+      sentiment: item.metadata?.sentiment || 'neutral' as const,
+      originalUrl: item.original_url,
+      isBookmarked: item.is_bookmarked
+    })),
+    ...processedDocuments, 
+    ...processedEmails, 
+    ...mockContent
+  ];
 
   const tabData = [
     { value: "all", label: "All Content", icon: FileText, count: allContent.length },
@@ -237,7 +389,7 @@ const Dashboard = () => {
                       key={index} 
                       {...content} 
                       onAskAI={handleAskAI}
-                      onSave={() => handleSave(content.title)}
+                      onSave={() => handleSave(content.title, content)}
                     />
                   ))}
                 </div>
@@ -261,7 +413,7 @@ const Dashboard = () => {
                         key={index} 
                         {...content} 
                         onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title)}
+                        onSave={() => handleSave(content.title, content)}
                       />
                     ))}
                 </div>
@@ -278,7 +430,7 @@ const Dashboard = () => {
                         key={index} 
                         {...content} 
                         onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title)}
+                         onSave={() => handleSave(content.title, content)}
                       />
                     ))}
                 </div>
@@ -305,7 +457,7 @@ const Dashboard = () => {
                           key={index} 
                           {...email} 
                           onAskAI={handleAskAI}
-                          onSave={() => handleSave(email.title)}
+                          onSave={() => handleSave(email.title, email)}
                         />
                       ))}
                     </div>
@@ -331,7 +483,7 @@ const Dashboard = () => {
                         key={index} 
                         {...content} 
                         onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title)}
+                        onSave={() => handleSave(content.title, content)}
                       />
                     ))}
                 </div>
@@ -348,7 +500,7 @@ const Dashboard = () => {
                         key={index} 
                         {...content} 
                         onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title)}
+                        onSave={() => handleSave(content.title, content)}
                       />
                     ))}
                 </div>
@@ -388,11 +540,38 @@ const Dashboard = () => {
                       <Plus className="h-5 w-5 mr-3" />
                       Process Video
                     </Button>
-                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors">
+                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors"
+                      onClick={() => navigate('/sources')}
+                    >
                       <Settings className="h-5 w-5 mr-3" />
                       Manage Sources
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start h-12 hover:border-accent/50 transition-colors"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="h-5 w-5 mr-3" />
+                      Sign Out
+                    </Button>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Video Processor Modal */}
+            {showVideoProcessor && (
+              <Card className="shadow-elevated border-accent/20">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Process Video</span>
+                    <Button variant="ghost" size="sm" onClick={() => setShowVideoProcessor(false)}>
+                      ×
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <VideoProcessor onContentProcessed={handleVideoProcessed} />
                 </CardContent>
               </Card>
             )}

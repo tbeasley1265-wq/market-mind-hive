@@ -151,7 +151,7 @@ const Index = () => {
                   className="rounded-l-none px-8 bg-gradient-accent hover:scale-105 transition-all duration-300 shadow-elevated" 
                   asChild
                 >
-                  <Link to="/onboarding">
+                  <Link to="/auth">
                     Start Free Trial
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
@@ -387,7 +387,7 @@ const Index = () => {
                 className="px-8 py-4 text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-elevated" 
                 asChild
               >
-                <Link to="/onboarding">
+                <Link to="/auth">
                   Start Your Free Trial
                   <ArrowRight className="ml-2 h-6 w-6" />
                 </Link>
@@ -396,9 +396,12 @@ const Index = () => {
                 size="lg" 
                 variant="ghost"
                 className="px-8 py-4 text-lg font-semibold text-white border-white/20 hover:bg-white/10 transition-all duration-300" 
+                asChild
               >
-                <Play className="mr-2 h-5 w-5" />
-                Watch Demo
+                <Link to="/auth?tab=signin">
+                  Sign In
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Link>
               </Button>
             </div>
           </div>
