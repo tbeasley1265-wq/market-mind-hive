@@ -139,7 +139,7 @@ const Index = () => {
                 />
                 <Button 
                   size="lg" 
-                  className="rounded-l-none px-8 bg-gradient-accent hover:scale-105 transition-all duration-300 shadow-elevated animate-pulse-glow" 
+                  className="rounded-l-none px-8 bg-gradient-accent hover:scale-105 transition-all duration-300 shadow-elevated" 
                   asChild
                 >
                   <Link to="/onboarding">
@@ -375,7 +375,7 @@ const Index = () => {
               <Button 
                 size="lg" 
                 variant="secondary"
-                className="px-8 py-4 text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-elevated animate-pulse-glow" 
+                className="px-8 py-4 text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-elevated" 
                 asChild
               >
                 <Link to="/onboarding">
