@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EmailIntegrationProps {
   onEmailsProcessed?: (emails: any[]) => void;
@@ -11,46 +12,72 @@ interface EmailIntegrationProps {
 
 const EmailIntegration = ({ onEmailsProcessed }: EmailIntegrationProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const handleGmailConnect = async () => {
-    setIsConnecting(true);
-    
+  useEffect(() => {
+    checkConnectedAccounts();
+    // Check for OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (code && !sessionStorage.getItem('oauth_handled')) {
+      sessionStorage.setItem('oauth_handled', 'true');
+      handleOAuthCallback(code);
+    }
+  }, []);
+
+  const checkConnectedAccounts = async () => {
     try {
-      // In a real implementation, this would use Google OAuth
-      // For now, we'll simulate the connection
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setConnectedAccounts(prev => [...prev, 'gmail']);
-      
-      toast({
-        title: "Success",
-        description: "Gmail account connected successfully! Your research emails will be automatically processed.",
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: sources } = await supabase
+        .from('content_sources')
+        .select('source_type')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (sources) {
+        setConnectedAccounts(sources.map(s => s.source_type));
+      }
+    } catch (error) {
+      console.error('Error checking connected accounts:', error);
+    }
+  };
+
+  const handleOAuthCallback = async (code: string) => {
+    setIsConnecting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('gmail-integration', {
+        body: { 
+          action: 'exchange_code',
+          code: code,
+          userId: user.id
+        }
       });
 
-      // Simulate processing some emails
-      const mockEmails = [
-        {
-          subject: "Weekly Crypto Research - Bitcoin ETF Updates",
-          sender: "research@defiant.io",
-          processed: true,
-          tags: ["crypto", "bitcoin", "ETF"]
-        },
-        {
-          subject: "Market Analysis: Fed Policy Impact",
-          sender: "insights@realvision.com",
-          processed: true,
-          tags: ["macro", "fed", "policy"]
-        }
-      ];
+      if (error) throw error;
 
-      onEmailsProcessed?.(mockEmails);
+      setConnectedAccounts(prev => [...prev.filter(a => a !== 'gmail'), 'gmail']);
+      toast({
+        title: "Success",
+        description: "Gmail account connected successfully! Fetching your research emails...",
+      });
 
-    } catch (error) {
+      // Automatically fetch emails after connection
+      fetchEmails();
+
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error: any) {
+      console.error('OAuth callback error:', error);
       toast({
         title: "Error",
-        description: "Failed to connect Gmail account. Please try again.",
+        description: error.message || "Failed to connect Gmail account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -58,29 +85,89 @@ const EmailIntegration = ({ onEmailsProcessed }: EmailIntegrationProps) => {
     }
   };
 
-  const handleOutlookConnect = async () => {
-    setIsConnecting(true);
-    
+  const handleGmailConnect = async () => {
     try {
-      // In a real implementation, this would use Microsoft OAuth
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setConnectedAccounts(prev => [...prev, 'outlook']);
-      
-      toast({
-        title: "Success",
-        description: "Outlook account connected successfully!",
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to connect your Gmail account.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Clear any previous OAuth handling
+      sessionStorage.removeItem('oauth_handled');
+
+      // Get OAuth URL from edge function
+      const { data, error } = await supabase.functions.invoke('gmail-integration', {
+        body: { 
+          action: 'get_oauth_url',
+          redirectUri: `${window.location.origin}/sources`
+        }
       });
 
-    } catch (error) {
+      if (error) throw error;
+
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Failed to get OAuth URL');
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to connect Outlook account. Please try again.",
+        description: "Failed to initiate Gmail connection. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchEmails = async () => {
+    setIsFetching(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('gmail-integration', {
+        body: { 
+          action: 'fetch_emails',
+          userId: user.id
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.emails?.length > 0) {
+        onEmailsProcessed?.(data.emails);
+        toast({
+          title: "Success",
+          description: `Processed ${data.emails.length} research emails from your Gmail.`,
+        });
+      } else {
+        toast({
+          title: "No New Emails",
+          description: "No new research emails found in your Gmail inbox.",
+        });
+      }
+    } catch (error: any) {
+      console.error('Email fetch error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch emails. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsConnecting(false);
+      setIsFetching(false);
     }
+  };
+
+  const handleOutlookConnect = async () => {
+    toast({
+      title: "Coming Soon",
+      description: "Outlook integration is not yet implemented. Please use Gmail for now.",
+    });
   };
 
   return (
@@ -112,10 +199,23 @@ const EmailIntegration = ({ onEmailsProcessed }: EmailIntegrationProps) => {
                 </div>
               </div>
               {connectedAccounts.includes('gmail') ? (
-                <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Connected
-                </Badge>
+                <div className="flex gap-2">
+                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                  <Button 
+                    onClick={fetchEmails}
+                    disabled={isFetching}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isFetching ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {isFetching ? 'Fetching...' : 'Fetch Emails'}
+                  </Button>
+                </div>
               ) : (
                 <Button 
                   onClick={handleGmailConnect}
