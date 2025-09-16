@@ -132,8 +132,9 @@ const Index = () => {
             </h2>
             
             <p className="mb-12 text-xl text-muted-foreground lg:text-2xl max-w-4xl mx-auto animate-fade-in-up leading-relaxed">
-              Harness AI to track, analyze, and extract insights from the world's top financial minds across 
-              YouTube, newsletters, Twitter, and private platforms — all in real-time.
+              We automatically extract and analyze insights from the world's top financial minds across 
+              YouTube, newsletters, Twitter, and private platforms — delivering instant summaries 
+              <span className="font-semibold text-accent">FOR YOU</span> the moment new content drops.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-scale-in">
@@ -181,11 +182,11 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16 animate-fade-in-up">
             <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
-              Connect Your Entire Research Ecosystem
+              We Monitor <span className="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">Everything</span> For You
             </h2>
             <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Seamlessly integrate with the platforms where financial insights live, 
-              from social media to private research platforms.
+              <span className="font-semibold text-foreground">Automatic extraction</span> from every platform where financial insights live. 
+              <span className="font-semibold text-accent">Instant summaries</span> ready the moment new content appears.
             </p>
           </div>
           
