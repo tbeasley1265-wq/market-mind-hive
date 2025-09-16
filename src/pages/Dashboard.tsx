@@ -398,6 +398,13 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+
+        {/* Email Integration Modal */}
+        <EmailIntegrationModal 
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onEmailsProcessed={handleEmailsProcessed}
+        />
       </main>
     </div>
   );
