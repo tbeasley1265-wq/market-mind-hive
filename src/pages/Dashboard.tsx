@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Search, 
   Filter, 
@@ -14,14 +15,32 @@ import {
   FileText,
   Upload,
   Calendar,
-  Settings
+  Settings,
+  MessageSquare
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
+import ChatInterface from "@/components/chat/ChatInterface";
 import Header from "@/components/layout/Header";
+import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [showChat, setShowChat] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<{ title: string; url?: string } | null>(null);
+  const { toast } = useToast();
+
+  const handleAskAI = (title: string, url?: string) => {
+    setSelectedContent({ title, url });
+    setShowChat(true);
+  };
+
+  const handleSave = (title: string) => {
+    toast({
+      title: "Saved",
+      description: `"${title}" has been saved to your bookmarks.`,
+    });
+  };
 
   // Mock data for demonstration
   const mockContent = [
@@ -96,122 +115,201 @@ const Dashboard = () => {
       <Header />
       
       <main className="container mx-auto px-6 py-8">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Research Dashboard</h1>
-            <p className="text-muted-foreground">
-              Stay updated with the latest insights from your connected sources
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Sources
-            </Button>
-            <Button variant="hero">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
-          </div>
-        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          <div className="xl:col-span-3">
+            {/* Header Section */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">Research Dashboard</h1>
+                <p className="text-muted-foreground">
+                  Stay updated with the latest insights from your connected sources
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <Button variant="outline" size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Sources
+                </Button>
+                <Button variant="hero">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Source
+                </Button>
+              </div>
+            </div>
 
-        {/* Search and Quick Stats */}
-        <div className="flex flex-col lg:flex-row gap-6 mb-8">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search across all content..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12"
+            {/* Search and Quick Stats */}
+            <div className="flex flex-col lg:flex-row gap-6 mb-8">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search across all content..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-foreground">47</div>
+                  <div className="text-xs text-muted-foreground">Today</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-success">12</div>
+                  <div className="text-xs text-muted-foreground">Bullish</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-destructive">8</div>
+                  <div className="text-xs text-muted-foreground">Bearish</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content Tabs */}
+            <Tabs defaultValue="all" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+                {tabData.map((tab) => {
+                  const IconComponent = tab.icon;
+                  return (
+                    <TabsTrigger 
+                      key={tab.value} 
+                      value={tab.value}
+                      className="flex items-center gap-2 text-xs lg:text-sm"
+                    >
+                      <IconComponent className="h-4 w-4" />
+                      <span className="hidden lg:inline">{tab.label}</span>
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {tab.count}
+                      </Badge>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {/* Content Grid */}
+              <TabsContent value="all" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {mockContent.map((content, index) => (
+                    <ContentCard 
+                      key={index} 
+                      {...content} 
+                      onAskAI={handleAskAI}
+                      onSave={() => handleSave(content.title)}
+                    />
+                  ))}
+                </div>
+                
+                <div className="text-center py-8">
+                  <Button variant="outline">
+                    Load More Content
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Other tab contents would be similar with filtered data */}
+              <TabsContent value="crypto" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {mockContent
+                    .filter(content => content.tags.some(tag => 
+                      ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag)
+                    ))
+                    .map((content, index) => (
+                      <ContentCard 
+                        key={index} 
+                        {...content} 
+                        onAskAI={handleAskAI}
+                        onSave={() => handleSave(content.title)}
+                      />
+                    ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="macro" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {mockContent
+                    .filter(content => content.tags.some(tag => 
+                      ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag)
+                    ))
+                    .map((content, index) => (
+                      <ContentCard 
+                        key={index} 
+                        {...content} 
+                        onAskAI={handleAskAI}
+                        onSave={() => handleSave(content.title)}
+                      />
+                    ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            {showChat ? (
+              <ChatInterface 
+                contentTitle={selectedContent?.title}
+                onClose={() => setShowChat(false)}
               />
-            </div>
-          </div>
-          
-          <div className="flex gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-foreground">47</div>
-              <div className="text-xs text-muted-foreground">Today</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-success">12</div>
-              <div className="text-xs text-muted-foreground">Bullish</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-destructive">8</div>
-              <div className="text-xs text-muted-foreground">Bearish</div>
-            </div>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Trending Topics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {["Bitcoin ETF", "AI Regulation", "Fed Policy", "DeFi Innovation"].map((topic) => (
+                        <div key={topic} className="flex items-center justify-between">
+                          <span className="text-sm">{topic}</span>
+                          <Badge variant="secondary">↑ 12%</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5" />
+                      Quick Actions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => setShowChat(true)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Ask AI Assistant
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Process Video
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Manage Sources
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
-            {tabData.map((tab) => {
-              const IconComponent = tab.icon;
-              return (
-                <TabsTrigger 
-                  key={tab.value} 
-                  value={tab.value}
-                  className="flex items-center gap-2 text-xs lg:text-sm"
-                >
-                  <IconComponent className="h-4 w-4" />
-                  <span className="hidden lg:inline">{tab.label}</span>
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {tab.count}
-                  </Badge>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          {/* Content Grid */}
-          <TabsContent value="all" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-              {mockContent.map((content, index) => (
-                <ContentCard key={index} {...content} />
-              ))}
-            </div>
-            
-            <div className="text-center py-8">
-              <Button variant="outline">
-                Load More Content
-              </Button>
-            </div>
-          </TabsContent>
-
-          {/* Other tab contents would be similar with filtered data */}
-          <TabsContent value="crypto" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-              {mockContent
-                .filter(content => content.tags.some(tag => 
-                  ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag)
-                ))
-                .map((content, index) => (
-                  <ContentCard key={index} {...content} />
-                ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="macro" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-              {mockContent
-                .filter(content => content.tags.some(tag => 
-                  ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag)
-                ))
-                .map((content, index) => (
-                  <ContentCard key={index} {...content} />
-                ))}
-            </div>
-          </TabsContent>
-        </Tabs>
       </main>
     </div>
   );

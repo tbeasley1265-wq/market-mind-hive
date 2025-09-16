@@ -24,6 +24,8 @@ interface ContentCardProps {
   tags: string[];
   sentiment?: "bullish" | "bearish" | "neutral";
   originalUrl?: string;
+  onAskAI?: (title: string, url?: string) => void;
+  onSave?: () => void;
 }
 
 const platformIcons = {
@@ -51,7 +53,9 @@ const ContentCard = ({
   summary,
   tags,
   sentiment = "neutral",
-  originalUrl
+  originalUrl,
+  onAskAI,
+  onSave
 }: ContentCardProps) => {
   const PlatformIcon = platformIcons[platform];
   const platformColor = platformColors[platform];
@@ -138,11 +142,16 @@ const ContentCard = ({
         )}
         
         <div className="flex items-center justify-between pt-2">
-          <Button variant="outline" size="sm" className="flex-1 mr-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 mr-2"
+            onClick={() => onAskAI?.(title, originalUrl)}
+          >
             <MessageSquare className="h-4 w-4 mr-2" />
             Ask AI
           </Button>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => onSave?.()}>
             Save
           </Button>
         </div>

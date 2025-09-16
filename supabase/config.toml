@@ -1,1 +1,10 @@
 project_id = "zpytenapldiyxvjrntrm"
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.content-processor]
+verify_jwt = true
+
+[functions.video-summarizer]
+verify_jwt = true
