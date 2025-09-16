@@ -3,135 +3,306 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Brain, TrendingUp, Zap, Users, Clock, MessageSquare } from "lucide-react";
+import { 
+  ArrowRight, 
+  Brain, 
+  TrendingUp, 
+  Zap, 
+  Users, 
+  Clock, 
+  MessageSquare,
+  Youtube,
+  Mail,
+  Twitter,
+  FileText,
+  Rss,
+  ChevronRight,
+  Play,
+  Star,
+  CheckCircle,
+  BarChart3,
+  Target,
+  Sparkles
+} from "lucide-react";
 
 const Index = () => {
   const [email, setEmail] = useState("");
 
+  const sources = [
+    {
+      name: "YouTube",
+      icon: Youtube,
+      color: "text-red-500",
+      bgColor: "bg-red-50 dark:bg-red-900/20",
+      description: "AI-powered video summaries",
+      count: "2.5K+ channels"
+    },
+    {
+      name: "Gmail",
+      icon: Mail,
+      color: "text-blue-600",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
+      description: "Newsletter extraction",
+      count: "10K+ emails processed"
+    },
+    {
+      name: "Twitter/X",
+      icon: Twitter,
+      color: "text-sky-500",
+      bgColor: "bg-sky-50 dark:bg-sky-900/20",
+      description: "Real-time sentiment",
+      count: "50K+ tweets analyzed"
+    },
+    {
+      name: "Substack",
+      icon: FileText,
+      color: "text-orange-500",
+      bgColor: "bg-orange-50 dark:bg-orange-900/20",
+      description: "Research articles",
+      count: "1K+ publications"
+    },
+    {
+      name: "RSS Feeds",
+      icon: Rss,
+      color: "text-green-600",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
+      description: "News aggregation",
+      count: "500+ feeds monitored"
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: "Sarah Chen",
+      role: "Hedge Fund Manager",
+      company: "Quantum Capital",
+      avatar: "SC",
+      content: "Market Minds has transformed how we consume research. We're now 3x faster at identifying market opportunities.",
+      rating: 5
+    },
+    {
+      name: "Michael Rodriguez",
+      role: "Senior Analyst",
+      company: "Goldman Sachs",
+      avatar: "MR",
+      content: "The AI summarization is incredibly accurate. It's like having a personal research assistant.",
+      rating: 5
+    },
+    {
+      name: "Emma Thompson",
+      role: "Portfolio Manager",
+      company: "BlackRock",
+      avatar: "ET",
+      content: "Integration with our existing workflow was seamless. ROI was immediate.",
+      rating: 5
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-3xl animate-float opacity-60" />
+        <div className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl animate-float-delayed opacity-50" />
+        <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-gradient-to-r from-accent/10 to-success/10 rounded-full blur-3xl animate-float opacity-40" />
+      </div>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-hero">
-        <div className="absolute inset-0 bg-grid-white/10" />
-        <div className="relative">
-          <div className="container mx-auto px-6 py-20 lg:py-32">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="mb-8 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-sm">
-                <Zap className="mr-2 h-4 w-4 text-accent-muted" />
-                <span className="text-sm font-medium text-white">AI-Powered Research Intelligence</span>
+      <section className="relative pt-20 pb-16 lg:pt-32 lg:pb-24">
+        <div className="container mx-auto px-6">
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="mb-8 inline-flex items-center rounded-full border border-accent/20 bg-accent/10 px-6 py-3 backdrop-blur-sm animate-fade-in-up">
+              <Sparkles className="mr-3 h-5 w-5 text-accent animate-pulse-glow" />
+              <span className="text-sm font-semibold text-accent">Next-Gen Financial Intelligence Platform</span>
+            </div>
+            
+            <h1 className="mb-8 text-5xl font-bold text-foreground lg:text-7xl animate-fade-in-up leading-tight">
+              Turn Market Noise Into{" "}
+              <span className="bg-gradient-to-r from-accent via-primary to-success bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-shift">
+                Actionable Intelligence
+              </span>
+            </h1>
+            
+            <p className="mb-12 text-xl text-muted-foreground lg:text-2xl max-w-4xl mx-auto animate-fade-in-up leading-relaxed">
+              Harness AI to track, analyze, and extract insights from the world's top financial minds across 
+              YouTube, newsletters, Twitter, and private platforms — all in real-time.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-scale-in">
+              <div className="flex w-full sm:w-auto max-w-lg">
+                <input
+                  type="email"
+                  placeholder="Enter your work email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 px-6 py-4 rounded-l-xl bg-card/80 border border-border text-foreground placeholder-muted-foreground backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300"
+                />
+                <Button 
+                  size="lg" 
+                  className="rounded-l-none px-8 bg-gradient-accent hover:scale-105 transition-all duration-300 shadow-elevated animate-pulse-glow" 
+                  asChild
+                >
+                  <Link to="/onboarding">
+                    Start Free Trial
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
               </div>
-              
-              <h1 className="mb-6 text-4xl font-bold text-white lg:text-6xl">
-                Stay Ahead of Markets with{" "}
-                <span className="bg-gradient-to-r from-accent-muted to-white bg-clip-text text-transparent">
-                  Market Minds
-                </span>
-              </h1>
-              
-              <p className="mb-8 text-lg text-white/80 lg:text-xl max-w-3xl mx-auto">
-                Track, summarize, and surface insights from the world's top analysts across YouTube, Substack, 
-                Twitter, newsletters, and your inbox — all powered by advanced AI.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-                <div className="flex w-full sm:w-auto max-w-md">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-l-lg bg-white/10 border border-white/20 text-white placeholder-white/60 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-accent-muted"
-                  />
-                  <Button variant="hero" className="rounded-l-none px-6" asChild>
-                    <Link to="/onboarding">
-                      Get Started
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto animate-fade-in-up">
+              <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                <CheckCircle className="h-5 w-5 text-success" />
+                <span className="font-medium">14-day free trial</span>
               </div>
-              
-              <div className="flex items-center justify-center gap-8 text-sm text-white/60">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>Trusted by 500+ analysts</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Real-time insights</span>
-                </div>
+              <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                <CheckCircle className="h-5 w-5 text-success" />
+                <span className="font-medium">No credit card required</span>
+              </div>
+              <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                <CheckCircle className="h-5 w-5 text-success" />
+                <span className="font-medium">Cancel anytime</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 lg:py-32">
+      {/* Sources Showcase Section */}
+      <section className="py-16 lg:py-24 relative">
         <div className="container mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-              Everything you need for market research
+          <div className="text-center mb-16 animate-fade-in-up">
+            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
+              Connect Your Entire Research Ecosystem
             </h2>
-            <p className="text-lg text-muted-foreground">
-              Aggregate content from multiple sources, get AI-powered summaries, and interact with insights through our advanced chat interface.
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto">
+              Seamlessly integrate with the platforms where financial insights live, 
+              from social media to private research platforms.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            {sources.map((source, index) => {
+              const IconComponent = source.icon;
+              return (
+                <Card 
+                  key={source.name} 
+                  className={`group hover:shadow-elevated transition-all duration-500 hover:-translate-y-2 cursor-pointer border-card-border/50 hover:border-accent/50 ${source.bgColor} animate-fade-in-up`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className={`w-16 h-16 rounded-2xl ${source.bgColor} flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                      <IconComponent className={`h-8 w-8 ${source.color}`} />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2 text-foreground">{source.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-3">{source.description}</p>
+                    <Badge variant="secondary" className="text-xs font-medium">
+                      {source.count}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section with Enhanced Visuals */}
+      <section className="py-16 lg:py-24 bg-gradient-card">
+        <div className="container mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-16 animate-fade-in-up">
+            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
+              Why Top Analysts Choose Market Minds
+            </h2>
+            <p className="text-lg lg:text-xl text-muted-foreground">
+              Advanced AI capabilities designed specifically for financial research and market analysis.
             </p>
           </div>
           
           <div className="grid lg:grid-cols-3 gap-8">
-            <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-accent flex items-center justify-center mb-4">
-                  <Brain className="h-6 w-6 text-white" />
+            <Card className="border-card-border/50 shadow-card hover:shadow-elevated transition-all duration-500 hover:-translate-y-1 group animate-scale-in">
+              <CardHeader className="pb-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-accent flex items-center justify-center mb-6 group-hover:animate-pulse-glow">
+                  <Brain className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>AI-Powered Summaries</CardTitle>
-                <CardDescription>
-                  Get intelligent summaries of videos, articles, and newsletters with key insights highlighted.
+                <CardTitle className="text-xl mb-3">AI-Powered Analysis</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  Advanced NLP models extract key insights, sentiment, and market signals 
+                  from unstructured content with 95%+ accuracy.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Badge variant="secondary">YouTube Transcripts</Badge>
-                  <Badge variant="secondary">Substack Articles</Badge>
-                  <Badge variant="secondary">Email Newsletters</Badge>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Sentiment Analysis</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                    <span className="text-sm font-medium">Key Theme Extraction</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-warning rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+                    <span className="text-sm font-medium">Price Target Detection</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-accent flex items-center justify-center mb-4">
-                  <TrendingUp className="h-6 w-6 text-white" />
+            <Card className="border-card-border/50 shadow-card hover:shadow-elevated transition-all duration-500 hover:-translate-y-1 group animate-scale-in" style={{ animationDelay: '200ms' }}>
+              <CardHeader className="pb-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 group-hover:animate-pulse-glow">
+                  <BarChart3 className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Multi-Source Aggregation</CardTitle>
-                <CardDescription>
-                  Connect Twitter, Reddit, private platforms, and more to get a comprehensive view of market sentiment.
+                <CardTitle className="text-xl mb-3">Real-Time Aggregation</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  Monitor thousands of sources simultaneously with instant updates 
+                  on breaking news, research reports, and market movements.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Badge variant="secondary">Twitter/X</Badge>
-                  <Badge variant="secondary">Reddit</Badge>
-                  <Badge variant="secondary">Private Platforms</Badge>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Live Data Streams</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                    <span className="text-sm font-medium">Smart Prioritization</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-warning rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+                    <span className="text-sm font-medium">Custom Alerts</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-gradient-accent flex items-center justify-center mb-4">
-                  <MessageSquare className="h-6 w-6 text-white" />
+            <Card className="border-card-border/50 shadow-card hover:shadow-elevated transition-all duration-500 hover:-translate-y-1 group animate-scale-in" style={{ animationDelay: '400ms' }}>
+              <CardHeader className="pb-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-success to-accent flex items-center justify-center mb-6 group-hover:animate-pulse-glow">
+                  <Target className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Interactive Chat</CardTitle>
-                <CardDescription>
-                  Ask questions about any content, get clarifications, and explore deeper insights with our AI assistant.
+                <CardTitle className="text-xl mb-3">Interactive Intelligence</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  Chat with your research data to uncover hidden patterns, 
+                  correlations, and actionable insights across all your sources.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <Badge variant="secondary">Content Q&A</Badge>
-                  <Badge variant="secondary">Sentiment Analysis</Badge>
-                  <Badge variant="secondary">Trend Tracking</Badge>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Natural Language Queries</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+                    <span className="text-sm font-medium">Cross-Source Analysis</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-warning rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+                    <span className="text-sm font-medium">Predictive Insights</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -139,22 +310,89 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="py-16 lg:py-24">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16 animate-fade-in-up">
+            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
+              Trusted by Financial Professionals
+            </h2>
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
+              See what industry leaders are saying about Market Minds
+            </p>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card 
+                key={testimonial.name} 
+                className="border-card-border/50 shadow-card hover:shadow-elevated transition-all duration-500 hover:-translate-y-1 animate-fade-in-up"
+                style={{ animationDelay: `${index * 150}ms` }}
+              >
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-1 mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-warning text-warning" />
+                    ))}
+                  </div>
+                  <blockquote className="text-foreground leading-relaxed mb-6 italic">
+                    "{testimonial.content}"
+                  </blockquote>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-accent flex items-center justify-center font-bold text-white">
+                      {testimonial.avatar}
+                    </div>
+                    <div>
+                      <div className="font-bold text-foreground">{testimonial.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {testimonial.role}, {testimonial.company}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-card">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6">
-            Ready to transform your research workflow?
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join hundreds of analysts, fund managers, and researchers who trust Market Minds 
-            to stay ahead of market trends.
-          </p>
-          <Button variant="hero" size="lg" asChild>
-            <Link to="/onboarding">
-              Start Your Free Trial
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
+      <section className="py-20 lg:py-32 bg-gradient-hero relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/5" />
+        <div className="container mx-auto px-6 text-center relative">
+          <div className="max-w-4xl mx-auto animate-fade-in-up">
+            <h2 className="text-4xl lg:text-6xl font-bold text-white mb-8 leading-tight">
+              Ready to Transform Your 
+              <span className="block bg-gradient-to-r from-white to-accent-muted bg-clip-text text-transparent">
+                Research Workflow?
+              </span>
+            </h2>
+            <p className="text-xl lg:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
+              Join 500+ analysts, portfolio managers, and researchers who rely on Market Minds 
+              to stay ahead of market trends and make data-driven decisions.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+              <Button 
+                size="lg" 
+                variant="secondary"
+                className="px-8 py-4 text-lg font-semibold hover:scale-105 transition-all duration-300 shadow-elevated animate-pulse-glow" 
+                asChild
+              >
+                <Link to="/onboarding">
+                  Start Your Free Trial
+                  <ArrowRight className="ml-2 h-6 w-6" />
+                </Link>
+              </Button>
+              <Button 
+                size="lg" 
+                variant="ghost"
+                className="px-8 py-4 text-lg font-semibold text-white border-white/20 hover:bg-white/10 transition-all duration-300" 
+              >
+                <Play className="mr-2 h-5 w-5" />
+                Watch Demo
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </div>
