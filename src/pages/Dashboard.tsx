@@ -20,7 +20,7 @@ import {
   Mail
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
-import DocumentUploadCompact from "@/components/content/DocumentUploadCompact";
+import DocumentUpload from "@/components/content/DocumentUpload";
 import EmailContentFilter from "@/components/content/EmailContentFilter";
 import EmailIntegrationModal from "@/components/email/EmailIntegrationModal";
 import ChatInterface from "@/components/chat/ChatInterface";
@@ -202,12 +202,9 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              <div className="flex gap-6 items-center">
-                <DocumentUploadCompact onDocumentProcessed={handleDocumentProcessed} />
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-foreground">{allContent.length}</div>
-                  <div className="text-xs text-muted-foreground">Total</div>
-                </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-foreground">{allContent.length}</div>
+                <div className="text-xs text-muted-foreground">Total</div>
               </div>
             </div>
 
@@ -360,7 +357,10 @@ const Dashboard = () => {
           </div>
 
           {/* Right Sidebar */}
-          <div className="space-y-6">            
+          <div className="space-y-6">
+            {/* Document Upload */}
+            <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
+            
             {showChat ? (
               <ChatInterface 
                 contentTitle={selectedContent?.title}
