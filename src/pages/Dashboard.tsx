@@ -106,8 +106,6 @@ const Dashboard = () => {
     { value: "macro", label: "Macro", icon: TrendingUp, count: 12 },
     { value: "equities", label: "Equities", icon: DollarSign, count: 15 },
     { value: "newsletters", label: "Newsletters", icon: FileText, count: 8 },
-    { value: "uploaded", label: "Uploaded", icon: Upload, count: 3 },
-    { value: "weekly", label: "Weekly Recap", icon: Calendar, count: 1 },
   ];
 
   return (
@@ -161,20 +159,12 @@ const Dashboard = () => {
                   <div className="text-2xl font-bold text-foreground">47</div>
                   <div className="text-xs text-muted-foreground">Today</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-success">12</div>
-                  <div className="text-xs text-muted-foreground">Bullish</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-destructive">8</div>
-                  <div className="text-xs text-muted-foreground">Bearish</div>
-                </div>
               </div>
             </div>
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="all" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+              <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
                 {tabData.map((tab) => {
                   const IconComponent = tab.icon;
                   return (
