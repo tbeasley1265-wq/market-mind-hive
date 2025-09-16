@@ -258,55 +258,34 @@ const Dashboard = () => {
                 onClose={() => setShowChat(false)}
               />
             ) : (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5" />
-                      Trending Topics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {["Bitcoin ETF", "AI Regulation", "Fed Policy", "DeFi Innovation"].map((topic) => (
-                        <div key={topic} className="flex items-center justify-between">
-                          <span className="text-sm">{topic}</span>
-                          <Badge variant="secondary">↑ 12%</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5" />
-                      Quick Actions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start"
-                        onClick={() => setShowChat(true)}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Ask AI Assistant
-                      </Button>
-                      <Button variant="outline" className="w-full justify-start">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Process Video
-                      </Button>
-                      <Button variant="outline" className="w-full justify-start">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Manage Sources
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
+              <Card className="shadow-elevated border-accent/20">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MessageSquare className="h-5 w-5 text-accent" />
+                    Quick Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Button 
+                      variant="hero" 
+                      className="w-full justify-start h-12 text-left"
+                      onClick={() => setShowChat(true)}
+                    >
+                      <MessageSquare className="h-5 w-5 mr-3" />
+                      Ask AI Assistant
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors">
+                      <Plus className="h-5 w-5 mr-3" />
+                      Process Video
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors">
+                      <Settings className="h-5 w-5 mr-3" />
+                      Manage Sources
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
