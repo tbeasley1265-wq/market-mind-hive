@@ -125,9 +125,9 @@ const Index = () => {
             </div>
             
             <h2 className="mb-8 text-4xl font-bold text-foreground lg:text-6xl animate-fade-in-up leading-tight">
-              Where Financial Intelligence Meets{" "}
+              All Your Financial Research, Summarized by AI{" "}
               <span className="bg-gradient-to-r from-accent via-primary to-success bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-shift">
-                AI Precision
+                — in Real Time
               </span>
             </h2>
             
