@@ -16,10 +16,13 @@ import {
   Upload,
   Calendar,
   Settings,
-  MessageSquare
+  MessageSquare,
+  Mail
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
+import EmailContentFilter from "@/components/content/EmailContentFilter";
+import EmailIntegration from "@/components/email/EmailIntegration";
 import ChatInterface from "@/components/chat/ChatInterface";
 import Header from "@/components/layout/Header";
 import { useToast } from "@/components/ui/use-toast";
@@ -30,6 +33,8 @@ const Dashboard = () => {
   const [showChat, setShowChat] = useState(false);
   const [selectedContent, setSelectedContent] = useState<{ title: string; url?: string } | null>(null);
   const [processedDocuments, setProcessedDocuments] = useState<any[]>([]);
+  const [processedEmails, setProcessedEmails] = useState<any[]>([]);
+  const [filteredEmails, setFilteredEmails] = useState<any[]>([]);
   const { toast } = useToast();
 
   const handleAskAI = (title: string, url?: string) => {
@@ -52,6 +57,28 @@ const Dashboard = () => {
         description: `"${result.data.title}" has been processed and added to your content.`,
       });
     }
+  };
+
+  const handleEmailsProcessed = (emails: any[]) => {
+    // Convert emails to the format expected by ContentCard
+    const formattedEmails = emails.map(email => ({
+      title: email.subject || email.title,
+      source: "Gmail",
+      platform: "email" as const,
+      author: email.sender || email.author || "Email",
+      timestamp: "just now",
+      summary: email.summary || `Email from ${email.sender}`,
+      tags: ["Email", "Research", ...(email.tags || [])],
+      sentiment: "neutral" as const,
+      originalUrl: email.originalUrl
+    }));
+    
+    setProcessedEmails(prev => [...formattedEmails, ...prev]);
+    setFilteredEmails(prev => [...formattedEmails, ...prev]);
+    toast({
+      title: "Emails Processed",
+      description: `Added ${emails.length} research emails from your inbox.`,
+    });
   };
 
   // Mock data for demonstration
@@ -112,15 +139,16 @@ const Dashboard = () => {
     }
   ];
 
-  // Combine processed documents with mock content
-  const allContent = [...processedDocuments, ...mockContent];
+  // Combine processed documents, emails, and mock content
+  const allContent = [...processedDocuments, ...processedEmails, ...mockContent];
 
   const tabData = [
     { value: "all", label: "All Content", icon: FileText, count: allContent.length },
-    { value: "crypto", label: "Crypto", icon: Bitcoin, count: 18 },
-    { value: "macro", label: "Macro", icon: TrendingUp, count: 12 },
-    { value: "equities", label: "Equities", icon: DollarSign, count: 15 },
-    { value: "newsletters", label: "Newsletters", icon: FileText, count: 8 },
+    { value: "crypto", label: "Crypto", icon: Bitcoin, count: allContent.filter(c => c.tags?.some((tag: string) => ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag))).length },
+    { value: "macro", label: "Macro", icon: TrendingUp, count: allContent.filter(c => c.tags?.some((tag: string) => ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag))).length },
+    { value: "equities", label: "Equities", icon: DollarSign, count: allContent.filter(c => c.tags?.some((tag: string) => ['AI', 'Tech Stocks', 'Valuations', 'Earnings', 'Equities'].includes(tag))).length },
+    { value: "emails", label: "Email Inbox", icon: Mail, count: processedEmails.length },
+    { value: "newsletters", label: "Newsletters", icon: FileText, count: allContent.filter(c => c.tags?.some((tag: string) => ['Market Recap', 'Newsletter'].includes(tag))).length },
   ];
 
   return (
@@ -179,7 +207,7 @@ const Dashboard = () => {
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="all" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+              <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
                 {tabData.map((tab) => {
                   const IconComponent = tab.icon;
                   return (
@@ -238,9 +266,79 @@ const Dashboard = () => {
 
               <TabsContent value="macro" className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-2">
-                  {mockContent
-                    .filter(content => content.tags.some(tag => 
+                  {allContent
+                    .filter(content => content.tags?.some((tag: string) => 
                       ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag)
+                    ))
+                    .map((content, index) => (
+                      <ContentCard 
+                        key={index} 
+                        {...content} 
+                        onAskAI={handleAskAI}
+                        onSave={() => handleSave(content.title)}
+                      />
+                    ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="emails" className="space-y-6">
+                {processedEmails.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Emails Found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Connect your Gmail account to start extracting research content from your inbox.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <EmailContentFilter 
+                      emails={processedEmails} 
+                      onFilteredEmailsChange={setFilteredEmails}
+                    />
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {filteredEmails.map((email, index) => (
+                        <ContentCard 
+                          key={index} 
+                          {...email} 
+                          onAskAI={handleAskAI}
+                          onSave={() => handleSave(email.title)}
+                        />
+                      ))}
+                    </div>
+                    {filteredEmails.length === 0 && processedEmails.length > 0 && (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">
+                          No emails match your current filters. Try adjusting your search criteria.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="equities" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {allContent
+                    .filter(content => content.tags?.some((tag: string) => 
+                      ['AI', 'Tech Stocks', 'Valuations', 'Earnings', 'Equities'].includes(tag)
+                    ))
+                    .map((content, index) => (
+                      <ContentCard 
+                        key={index} 
+                        {...content} 
+                        onAskAI={handleAskAI}
+                        onSave={() => handleSave(content.title)}
+                      />
+                    ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="newsletters" className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {allContent
+                    .filter(content => content.tags?.some((tag: string) => 
+                      ['Market Recap', 'Newsletter', 'Volatility', 'Economic Data'].includes(tag)
                     ))
                     .map((content, index) => (
                       <ContentCard 
@@ -257,6 +355,9 @@ const Dashboard = () => {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
+            {/* Email Integration Section */}
+            <EmailIntegration onEmailsProcessed={handleEmailsProcessed} />
+            
             {/* Document Upload Section */}
             <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
             
