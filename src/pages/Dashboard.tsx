@@ -20,9 +20,9 @@ import {
   Mail
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
-import DocumentUpload from "@/components/content/DocumentUpload";
+import DocumentUploadCompact from "@/components/content/DocumentUploadCompact";
 import EmailContentFilter from "@/components/content/EmailContentFilter";
-import EmailIntegration from "@/components/email/EmailIntegration";
+import EmailIntegrationModal from "@/components/email/EmailIntegrationModal";
 import ChatInterface from "@/components/chat/ChatInterface";
 import Header from "@/components/layout/Header";
 import { useToast } from "@/components/ui/use-toast";
@@ -35,6 +35,7 @@ const Dashboard = () => {
   const [processedDocuments, setProcessedDocuments] = useState<any[]>([]);
   const [processedEmails, setProcessedEmails] = useState<any[]>([]);
   const [filteredEmails, setFilteredEmails] = useState<any[]>([]);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const { toast } = useToast();
 
   const handleAskAI = (title: string, url?: string) => {
@@ -172,6 +173,10 @@ const Dashboard = () => {
                   <Filter className="h-4 w-4 mr-2" />
                   Filters
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Connect Email
+                </Button>
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
                   Sources
@@ -197,7 +202,8 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              <div className="flex gap-4">
+              <div className="flex gap-6 items-center">
+                <DocumentUploadCompact onDocumentProcessed={handleDocumentProcessed} />
                 <div className="text-center">
                   <div className="text-2xl font-bold text-foreground">{allContent.length}</div>
                   <div className="text-xs text-muted-foreground">Total</div>
@@ -354,13 +360,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right Sidebar */}
-          <div className="space-y-6">
-            {/* Email Integration Section */}
-            <EmailIntegration onEmailsProcessed={handleEmailsProcessed} />
-            
-            {/* Document Upload Section */}
-            <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
-            
+          <div className="space-y-6">            
             {showChat ? (
               <ChatInterface 
                 contentTitle={selectedContent?.title}
