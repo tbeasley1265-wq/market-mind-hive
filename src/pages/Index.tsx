@@ -111,8 +111,8 @@ const Index = () => {
       <section className="relative pt-20 pb-16 lg:pt-32 lg:pb-24">
         <div className="container mx-auto px-6">
           <div className="max-w-5xl mx-auto text-center">
-            <div className="mb-6 animate-fade-in-up">
-              <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
+            <div className="mb-4 animate-fade-in-up">
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                   Market Minds
                 </span>
