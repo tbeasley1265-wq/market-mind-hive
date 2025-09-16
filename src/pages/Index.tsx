@@ -140,7 +140,7 @@ const Index = () => {
               <div className="flex w-full sm:w-auto max-w-lg">
                 <input
                   type="email"
-                  placeholder="Enter your work email"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1 px-6 py-4 rounded-l-xl bg-card/80 border border-border text-foreground placeholder-muted-foreground backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-300"
