@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.gmail-integration]
 verify_jwt = true
+
+[functions.document-summarizer]
+verify_jwt = false

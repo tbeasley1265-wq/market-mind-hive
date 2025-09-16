@@ -19,6 +19,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
+import DocumentUpload from "@/components/content/DocumentUpload";
 import ChatInterface from "@/components/chat/ChatInterface";
 import Header from "@/components/layout/Header";
 import { useToast } from "@/components/ui/use-toast";
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [showChat, setShowChat] = useState(false);
   const [selectedContent, setSelectedContent] = useState<{ title: string; url?: string } | null>(null);
+  const [processedDocuments, setProcessedDocuments] = useState<any[]>([]);
   const { toast } = useToast();
 
   const handleAskAI = (title: string, url?: string) => {
@@ -40,6 +42,16 @@ const Dashboard = () => {
       title: "Saved",
       description: `"${title}" has been saved to your bookmarks.`,
     });
+  };
+
+  const handleDocumentProcessed = (result: any) => {
+    if (result.success && result.data) {
+      setProcessedDocuments(prev => [result.data, ...prev]);
+      toast({
+        title: "Document Added",
+        description: `"${result.data.title}" has been processed and added to your content.`,
+      });
+    }
   };
 
   // Mock data for demonstration
@@ -100,8 +112,11 @@ const Dashboard = () => {
     }
   ];
 
+  // Combine processed documents with mock content
+  const allContent = [...processedDocuments, ...mockContent];
+
   const tabData = [
-    { value: "all", label: "All Content", icon: FileText, count: 47 },
+    { value: "all", label: "All Content", icon: FileText, count: allContent.length },
     { value: "crypto", label: "Crypto", icon: Bitcoin, count: 18 },
     { value: "macro", label: "Macro", icon: TrendingUp, count: 12 },
     { value: "equities", label: "Equities", icon: DollarSign, count: 15 },
@@ -156,8 +171,8 @@ const Dashboard = () => {
               
               <div className="flex gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-foreground">47</div>
-                  <div className="text-xs text-muted-foreground">Today</div>
+                  <div className="text-2xl font-bold text-foreground">{allContent.length}</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
                 </div>
               </div>
             </div>
@@ -186,7 +201,7 @@ const Dashboard = () => {
               {/* Content Grid */}
               <TabsContent value="all" className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-2">
-                  {mockContent.map((content, index) => (
+                  {allContent.map((content, index) => (
                     <ContentCard 
                       key={index} 
                       {...content} 
@@ -242,6 +257,9 @@ const Dashboard = () => {
 
           {/* Right Sidebar */}
           <div className="space-y-6">
+            {/* Document Upload Section */}
+            <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
+            
             {showChat ? (
               <ChatInterface 
                 contentTitle={selectedContent?.title}
