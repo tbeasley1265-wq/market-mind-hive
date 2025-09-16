@@ -111,17 +111,25 @@ const Index = () => {
       <section className="relative pt-20 pb-16 lg:pt-32 lg:pb-24">
         <div className="container mx-auto px-6">
           <div className="max-w-5xl mx-auto text-center">
+            <div className="mb-6 animate-fade-in-up">
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
+                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Market Minds
+                </span>
+              </h1>
+            </div>
+            
             <div className="mb-8 inline-flex items-center rounded-full border border-accent/20 bg-accent/10 px-6 py-3 backdrop-blur-sm animate-fade-in-up">
               <Sparkles className="mr-3 h-5 w-5 text-accent animate-pulse-glow" />
               <span className="text-sm font-semibold text-accent">Next-Gen Financial Intelligence Platform</span>
             </div>
             
-            <h1 className="mb-8 text-5xl font-bold text-foreground lg:text-7xl animate-fade-in-up leading-tight">
-              Turn Market Noise Into{" "}
+            <h2 className="mb-8 text-4xl font-bold text-foreground lg:text-6xl animate-fade-in-up leading-tight">
+              Where Financial Intelligence Meets{" "}
               <span className="bg-gradient-to-r from-accent via-primary to-success bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-shift">
-                Actionable Intelligence
+                AI Precision
               </span>
-            </h1>
+            </h2>
             
             <p className="mb-12 text-xl text-muted-foreground lg:text-2xl max-w-4xl mx-auto animate-fade-in-up leading-relaxed">
               Harness AI to track, analyze, and extract insights from the world's top financial minds across 
