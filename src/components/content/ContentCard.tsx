@@ -1,0 +1,154 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  MessageSquare, 
+  ExternalLink, 
+  Clock, 
+  User,
+  TrendingUp,
+  TrendingDown,
+  Youtube,
+  FileText,
+  Twitter,
+  Mail
+} from "lucide-react";
+
+interface ContentCardProps {
+  title: string;
+  source: string;
+  platform: "youtube" | "substack" | "twitter" | "email" | "reddit";
+  author: string;
+  timestamp: string;
+  summary: string;
+  tags: string[];
+  sentiment?: "bullish" | "bearish" | "neutral";
+  originalUrl?: string;
+}
+
+const platformIcons = {
+  youtube: Youtube,
+  substack: FileText,
+  twitter: Twitter,
+  email: Mail,
+  reddit: FileText,
+};
+
+const platformColors = {
+  youtube: "bg-red-500",
+  substack: "bg-orange-500",
+  twitter: "bg-blue-500",
+  email: "bg-green-500",
+  reddit: "bg-orange-600",
+};
+
+const ContentCard = ({
+  title,
+  source,
+  platform,
+  author,
+  timestamp,
+  summary,
+  tags,
+  sentiment = "neutral",
+  originalUrl
+}: ContentCardProps) => {
+  const PlatformIcon = platformIcons[platform];
+  const platformColor = platformColors[platform];
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case "bullish":
+        return "text-success border-success/20 bg-success/10";
+      case "bearish":
+        return "text-destructive border-destructive/20 bg-destructive/10";
+      default:
+        return "text-muted-foreground border-border bg-muted/50";
+    }
+  };
+
+  const getSentimentIcon = (sentiment: string) => {
+    switch (sentiment) {
+      case "bullish":
+        return <TrendingUp className="h-3 w-3" />;
+      case "bearish":
+        return <TrendingDown className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300 group">
+      <CardHeader className="space-y-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`w-10 h-10 rounded-lg ${platformColor} flex items-center justify-center`}>
+              <PlatformIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-foreground capitalize">{source}</span>
+                <Badge variant="outline" className={getSentimentColor(sentiment)}>
+                  {getSentimentIcon(sentiment)}
+                  <span className="ml-1 capitalize">{sentiment}</span>
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span>{author}</span>
+                <span>•</span>
+                <Clock className="h-3 w-3" />
+                <span>{timestamp}</span>
+              </div>
+            </div>
+          </div>
+          {originalUrl && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={originalUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
+        </div>
+        
+        <CardTitle className="text-lg leading-tight group-hover:text-accent transition-colors duration-200">
+          {title}
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <CardDescription className="text-sm leading-relaxed">
+          {summary}
+        </CardDescription>
+        
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.slice(0, 4).map((tag, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+            {tags.length > 4 && (
+              <Badge variant="secondary" className="text-xs">
+                +{tags.length - 4} more
+              </Badge>
+            )}
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between pt-2">
+          <Button variant="outline" size="sm" className="flex-1 mr-2">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Ask AI
+          </Button>
+          <Button variant="ghost" size="sm">
+            Save
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ContentCard;
