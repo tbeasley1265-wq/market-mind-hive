@@ -244,7 +244,7 @@ const FloatingAIInterface = ({
           
           <div className="flex-1 relative">
             <Input
-              placeholder={`Ask about "${contentTitle.length > 30 ? contentTitle.substring(0, 30) + '...' : contentTitle}"`}
+              placeholder={`Ask AI about "${contentTitle.length > 30 ? contentTitle.substring(0, 30) + '...' : contentTitle}"`}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
