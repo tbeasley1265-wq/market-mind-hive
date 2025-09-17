@@ -80,6 +80,10 @@ const Dashboard = () => {
     fetchContentItems();
   }, [user]);
 
+  const handleContentClick = (contentId: string) => {
+    navigate(`/content/${contentId}`);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -211,6 +215,7 @@ const Dashboard = () => {
   // Mock data for demonstration
   const mockContent = [
     {
+      id: "mock-1",
       title: "Bitcoin ETF Approval: What This Means for Crypto Markets",
       source: "Real Vision",
       platform: "youtube" as const,
@@ -222,6 +227,7 @@ const Dashboard = () => {
       originalUrl: "https://youtube.com/watch?v=example"
     },
     {
+      id: "mock-2",
       title: "Federal Reserve Policy Update - Interest Rate Decision Analysis",
       source: "Macro Musings",
       platform: "substack" as const,
@@ -233,6 +239,7 @@ const Dashboard = () => {
       originalUrl: "https://substack.com/example"
     },
     {
+      id: "mock-3",
       title: "AI Bubble or Sustainable Growth? Tech Earnings Deep Dive",
       source: "The Acquirer's Multiple",
       platform: "substack" as const,
@@ -244,6 +251,7 @@ const Dashboard = () => {
       originalUrl: "https://substack.com/example2"
     },
     {
+      id: "mock-4",
       title: "Solana Ecosystem Update: DeFi TVL Reaches New Highs",
       source: "Bankless",
       platform: "youtube" as const,
@@ -255,6 +263,7 @@ const Dashboard = () => {
       originalUrl: "https://youtube.com/watch?v=example2"
     },
     {
+      id: "mock-5",
       title: "Weekly Market Recap: Volatility Returns to Equity Markets",
       source: "Newsletter",
       platform: "email" as const,
@@ -263,6 +272,7 @@ const Dashboard = () => {
       summary: "Weekly roundup of market movements, key economic data releases, and sector performance. Focus on increased volatility patterns and potential catalysts for next week.",
       tags: ["Market Recap", "Volatility", "Equities", "Economic Data"],
       sentiment: "neutral" as const,
+      originalUrl: "https://newsletter.com/example"
     }
   ];
 
@@ -383,16 +393,18 @@ const Dashboard = () => {
 
               {/* Content Grid */}
               <TabsContent value="all" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {allContent.map((content, index) => (
-                    <ContentCard 
-                      key={index} 
-                      {...content} 
-                      onAskAI={handleAskAI}
-                      onSave={() => handleSave(content.title, content)}
-                    />
-                  ))}
-                </div>
+                 <div className="grid gap-6 lg:grid-cols-2">
+                   {allContent.map((content, index) => (
+                     <ContentCard 
+                       key={content.id || index} 
+                       id={content.id}
+                       {...content} 
+                       onAskAI={handleAskAI}
+                       onSave={() => handleSave(content.title, content)}
+                       onClick={() => content.id && handleContentClick(content.id)}
+                     />
+                   ))}
+                 </div>
                 
                 <div className="text-center py-8">
                   <Button variant="outline">
@@ -403,20 +415,22 @@ const Dashboard = () => {
 
               {/* Other tab contents would be similar with filtered data */}
               <TabsContent value="crypto" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {mockContent
-                    .filter(content => content.tags.some(tag => 
-                      ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag)
-                    ))
-                    .map((content, index) => (
-                      <ContentCard 
-                        key={index} 
-                        {...content} 
-                        onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title, content)}
-                      />
-                    ))}
-                </div>
+                 <div className="grid gap-6 lg:grid-cols-2">
+                   {mockContent
+                     .filter(content => content.tags.some(tag => 
+                       ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag)
+                     ))
+                     .map((content, index) => (
+                       <ContentCard 
+                         key={content.id || index} 
+                         id={content.id}
+                         {...content} 
+                         onAskAI={handleAskAI}
+                         onSave={() => handleSave(content.title, content)}
+                         onClick={() => content.id && handleContentClick(content.id)}
+                       />
+                     ))}
+                 </div>
               </TabsContent>
 
               <TabsContent value="macro" className="space-y-6">
@@ -425,15 +439,17 @@ const Dashboard = () => {
                     .filter(content => content.tags?.some((tag: string) => 
                       ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag)
                     ))
-                    .map((content, index) => (
-                      <ContentCard 
-                        key={index} 
-                        {...content} 
-                        onAskAI={handleAskAI}
+                     .map((content, index) => (
+                       <ContentCard 
+                         key={content.id || index} 
+                         id={content.id}
+                         {...content} 
+                         onAskAI={handleAskAI}
                          onSave={() => handleSave(content.title, content)}
-                      />
-                    ))}
-                </div>
+                         onClick={() => content.id && handleContentClick(content.id)}
+                       />
+                     ))}
+                 </div>
               </TabsContent>
 
               <TabsContent value="emails" className="space-y-6">
@@ -452,14 +468,16 @@ const Dashboard = () => {
                       onFilteredEmailsChange={setFilteredEmails}
                     />
                     <div className="grid gap-6 lg:grid-cols-2">
-                      {filteredEmails.map((email, index) => (
-                        <ContentCard 
-                          key={index} 
-                          {...email} 
-                          onAskAI={handleAskAI}
-                          onSave={() => handleSave(email.title, email)}
-                        />
-                      ))}
+                       {filteredEmails.map((email, index) => (
+                         <ContentCard 
+                           key={email.id || index} 
+                           id={email.id}
+                           {...email} 
+                           onAskAI={handleAskAI}
+                           onSave={() => handleSave(email.title, email)}
+                           onClick={() => email.id && handleContentClick(email.id)}
+                         />
+                       ))}
                     </div>
                     {filteredEmails.length === 0 && processedEmails.length > 0 && (
                       <div className="text-center py-8">
@@ -495,15 +513,17 @@ const Dashboard = () => {
                     .filter(content => content.tags?.some((tag: string) => 
                       ['Market Recap', 'Newsletter', 'Volatility', 'Economic Data'].includes(tag)
                     ))
-                    .map((content, index) => (
-                      <ContentCard 
-                        key={index} 
-                        {...content} 
-                        onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title, content)}
-                      />
-                    ))}
-                </div>
+                     .map((content, index) => (
+                       <ContentCard 
+                         key={content.id || index} 
+                         id={content.id}
+                         {...content} 
+                         onAskAI={handleAskAI}
+                         onSave={() => handleSave(content.title, content)}
+                         onClick={() => content.id && handleContentClick(content.id)}
+                       />
+                     ))}
+                 </div>
               </TabsContent>
             </Tabs>
           </div>

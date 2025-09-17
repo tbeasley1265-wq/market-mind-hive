@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 interface ContentCardProps {
+  id?: string;
   title: string;
   source: string;
   platform: "youtube" | "substack" | "twitter" | "email" | "reddit";
@@ -26,6 +27,7 @@ interface ContentCardProps {
   originalUrl?: string;
   onAskAI?: (title: string, url?: string) => void;
   onSave?: () => void;
+  onClick?: () => void;
 }
 
 const platformIcons = {
@@ -45,6 +47,7 @@ const platformColors = {
 };
 
 const ContentCard = ({
+  id,
   title,
   source,
   platform,
@@ -55,7 +58,8 @@ const ContentCard = ({
   sentiment = "neutral",
   originalUrl,
   onAskAI,
-  onSave
+  onSave,
+  onClick
 }: ContentCardProps) => {
   const PlatformIcon = platformIcons[platform];
   const platformColor = platformColors[platform];
@@ -83,7 +87,7 @@ const ContentCard = ({
   };
 
   return (
-    <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300 group">
+    <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300 group cursor-pointer" onClick={onClick}>
       <CardHeader className="space-y-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
@@ -108,7 +112,12 @@ const ContentCard = ({
             </div>
           </div>
           {originalUrl && (
-            <Button variant="ghost" size="sm" asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              asChild
+              onClick={(e) => e.stopPropagation()}
+            >
               <a href={originalUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -146,12 +155,22 @@ const ContentCard = ({
             variant="outline" 
             size="sm" 
             className="flex-1 mr-2"
-            onClick={() => onAskAI?.(title, originalUrl)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAskAI?.(title, originalUrl);
+            }}
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             Ask AI
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => onSave?.()}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave?.();
+            }}
+          >
             Save
           </Button>
         </div>
