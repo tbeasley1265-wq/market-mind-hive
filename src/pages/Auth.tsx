@@ -81,15 +81,25 @@ const Auth = () => {
   const handleSocialAuth = async (provider: 'google' | 'apple' | 'github' | 'discord') => {
     setLoading(true);
     setError('');
+    
+    console.log(`Attempting ${provider} OAuth signin...`);
+
+    const authOptions: any = {
+      redirectTo: `${window.location.origin}/dashboard`
+    };
+
+    // Add required email scopes for Google to prevent auth failures
+    if (provider === 'google') {
+      authOptions.scopes = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid';
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
+      options: authOptions
     });
 
     if (error) {
+      console.error(`${provider} OAuth error:`, error);
       setError(error.message);
       setLoading(false);
     }
