@@ -50,9 +50,13 @@ const ContentDetail = () => {
   const [content, setContent] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleAskAI = async (message: string) => {
-    toast.success(`AI Question: "${message}"`);
-    // TODO: Implement AI chat functionality
+  const handleAskAI = async (message: string): Promise<string> => {
+    // Simulate AI response for now
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(`Here's my analysis of "${content?.title}": ${message} - This is a great question about the content. Based on the summary, I can provide insights about the key themes and implications discussed in this piece.`);
+      }, 1500);
+    });
   };
 
   const handleVideoOverview = () => {
