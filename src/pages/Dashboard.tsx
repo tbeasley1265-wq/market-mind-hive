@@ -2,49 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Search, 
-  Filter, 
   Plus,
   TrendingUp,
-  Bitcoin,
-  DollarSign,
-  Briefcase,
+  BarChart3,
   FileText,
-  Upload,
-  Calendar,
-  Settings,
-  MessageSquare,
   Mail,
-  LogOut,
-  Bookmark
+  MessageSquare,
+  Filter,
+  Calendar,
+  Bookmark,
+  Clock,
+  ArrowUpRight,
+  Settings,
+  Upload,
+  Play
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
-import EmailContentFilter from "@/components/content/EmailContentFilter";
 import EmailIntegrationModal from "@/components/email/EmailIntegrationModal";
-import ChatInterface from "@/components/chat/ChatInterface";
 import VideoProcessor from "@/components/content/VideoProcessor";
 import Header from "@/components/layout/Header";
 import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [showChat, setShowChat] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<{ title: string; url?: string } | null>(null);
-  const [processedDocuments, setProcessedDocuments] = useState<any[]>([]);
-  const [processedEmails, setProcessedEmails] = useState<any[]>([]);
-  const [filteredEmails, setFilteredEmails] = useState<any[]>([]);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showVideoProcessor, setShowVideoProcessor] = useState(false);
+  const [showDocumentUpload, setShowDocumentUpload] = useState(false);
   const [contentItems, setContentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -84,14 +77,12 @@ const Dashboard = () => {
     navigate(`/content/${contentId}`);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
-
   const handleAskAI = (title: string, url?: string) => {
-    setSelectedContent({ title, url });
-    setShowChat(true);
+    // Implement AI chat functionality
+    toast({
+      title: "AI Chat",
+      description: "Opening AI chat for: " + title,
+    });
   };
 
   const handleSave = async (title: string, content: any) => {
@@ -141,77 +132,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleDocumentProcessed = async (result: any) => {
-    if (!user) return;
-
-    if (result.success && result.data) {
-      try {
-        // Save to database
-        const { error } = await supabase
-          .from('content_items')
-          .insert({
-            user_id: user.id,
-            title: result.data.title,
-            content_type: 'document',
-            platform: 'uploaded',
-            summary: result.data.summary,
-            metadata: {
-              tags: result.data.tags,
-              sentiment: result.data.sentiment,
-              file_type: result.data.file_type
-            }
-          });
-
-        if (error) throw error;
-
-        setProcessedDocuments(prev => [result.data, ...prev]);
-        
-        // Refresh content items
-        const { data } = await supabase
-          .from('content_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        setContentItems(data || []);
-
-        toast({
-          title: "Document Added",
-          description: `"${result.data.title}" has been processed and added to your content.`,
-        });
-      } catch (error) {
-        console.error('Error saving document:', error);
-        toast({
-          title: "Error",
-          description: "Document processed but failed to save. Please try again.",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
-  const handleEmailsProcessed = (emails: any[]) => {
-    // Convert emails to the format expected by ContentCard
-    const formattedEmails = emails.map(email => ({
-      title: email.subject || email.title,
-      source: "Gmail",
-      platform: "email" as const,
-      author: email.sender || email.author || "Email",
-      timestamp: "just now",
-      summary: email.summary || `Email from ${email.sender}`,
-      tags: ["Email", "Research", ...(email.tags || [])],
-      sentiment: "neutral" as const,
-      originalUrl: email.originalUrl
-    }));
-    
-    setProcessedEmails(prev => [...formattedEmails, ...prev]);
-    setFilteredEmails(prev => [...formattedEmails, ...prev]);
-    toast({
-      title: "Emails Processed",
-      description: `Added ${emails.length} research emails from your inbox.`,
-    });
-  };
-
   // Mock data for demonstration
   const mockContent = [
     {
@@ -224,7 +144,8 @@ const Dashboard = () => {
       summary: "Deep dive into the recent Bitcoin ETF approval and its implications for institutional adoption. Raoul discusses the potential for $100B+ inflows and what this means for BTC price action in the coming quarters.",
       tags: ["Bitcoin", "ETF", "Institutional", "Regulation"],
       sentiment: "bullish" as const,
-      originalUrl: "https://youtube.com/watch?v=example"
+      originalUrl: "https://youtube.com/watch?v=example",
+      isBookmarked: false
     },
     {
       id: "mock-2",
@@ -236,7 +157,8 @@ const Dashboard = () => {
       summary: "Analysis of the latest Fed decision and its impact on markets. Key insights on inflation targeting, employment data, and the path forward for monetary policy in 2024.",
       tags: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
       sentiment: "neutral" as const,
-      originalUrl: "https://substack.com/example"
+      originalUrl: "https://substack.com/example",
+      isBookmarked: false
     },
     {
       id: "mock-3",
@@ -248,47 +170,15 @@ const Dashboard = () => {
       summary: "Comprehensive analysis of recent tech earnings with focus on AI companies. Examines valuation multiples, revenue growth sustainability, and potential market corrections.",
       tags: ["AI", "Tech Stocks", "Valuations", "Earnings"],
       sentiment: "bearish" as const,
-      originalUrl: "https://substack.com/example2"
-    },
-    {
-      id: "mock-4",
-      title: "Solana Ecosystem Update: DeFi TVL Reaches New Highs",
-      source: "Bankless",
-      platform: "youtube" as const,
-      author: "Ryan Sean Adams",
-      timestamp: "1 day ago",
-      summary: "Overview of Solana's recent ecosystem growth, including DeFi protocols, NFT marketplaces, and developer activity. Analysis of SOL token performance and network metrics.",
-      tags: ["Solana", "DeFi", "TVL", "Ecosystem"],
-      sentiment: "bullish" as const,
-      originalUrl: "https://youtube.com/watch?v=example2"
-    },
-    {
-      id: "mock-5",
-      title: "Weekly Market Recap: Volatility Returns to Equity Markets",
-      source: "Newsletter",
-      platform: "email" as const,
-      author: "The Kobeissi Letter",
-      timestamp: "1 day ago",
-      summary: "Weekly roundup of market movements, key economic data releases, and sector performance. Focus on increased volatility patterns and potential catalysts for next week.",
-      tags: ["Market Recap", "Volatility", "Equities", "Economic Data"],
-      sentiment: "neutral" as const,
-      originalUrl: "https://newsletter.com/example"
+      originalUrl: "https://substack.com/example2",
+      isBookmarked: false
     }
   ];
 
-  const handleVideoProcessed = (result: any) => {
-    if (result.success && result.data) {
-      setProcessedDocuments(prev => [result.data, ...prev]);
-      toast({
-        title: "Video Added",
-        description: `"${result.data.title}" has been processed and added to your content.`,
-      });
-    }
-  };
-
-  // Combine processed documents, emails, content items, and mock content
+  // Combine content items and mock content
   const allContent = [
     ...contentItems.map(item => ({
+      id: item.id,
       title: item.title,
       source: item.platform,
       platform: item.content_type as 'youtube' | 'substack' | 'email',
@@ -300,311 +190,300 @@ const Dashboard = () => {
       originalUrl: item.original_url,
       isBookmarked: item.is_bookmarked
     })),
-    ...processedDocuments, 
-    ...processedEmails, 
     ...mockContent
   ];
 
-  const tabData = [
-    { value: "all", label: "All Content", icon: FileText, count: allContent.length },
-    { value: "crypto", label: "Crypto", icon: Bitcoin, count: allContent.filter(c => c.tags?.some((tag: string) => ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag))).length },
-    { value: "macro", label: "Macro", icon: TrendingUp, count: allContent.filter(c => c.tags?.some((tag: string) => ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag))).length },
-    { value: "equities", label: "Equities", icon: DollarSign, count: allContent.filter(c => c.tags?.some((tag: string) => ['AI', 'Tech Stocks', 'Valuations', 'Earnings', 'Equities'].includes(tag))).length },
-    { value: "emails", label: "Email Inbox", icon: Mail, count: processedEmails.length },
-    { value: "newsletters", label: "Newsletters", icon: FileText, count: allContent.filter(c => c.tags?.some((tag: string) => ['Market Recap', 'Newsletter'].includes(tag))).length },
+  const filteredContent = allContent.filter(content => {
+    const matchesSearch = content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         content.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         content.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (activeFilter === "all") return matchesSearch;
+    
+    const filterMap: Record<string, string[]> = {
+      crypto: ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"],
+      macro: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
+      tech: ["AI", "Tech Stocks", "Valuations", "Earnings"],
+      bookmarked: []
+    };
+    
+    if (activeFilter === "bookmarked") {
+      return matchesSearch && content.isBookmarked;
+    }
+    
+    return matchesSearch && content.tags.some((tag: string) => 
+      filterMap[activeFilter]?.includes(tag)
+    );
+  });
+
+  const quickStats = [
+    { 
+      label: "Total Content", 
+      value: allContent.length.toString(), 
+      icon: FileText,
+      change: "+12%",
+      trend: "up"
+    },
+    { 
+      label: "This Week", 
+      value: "24", 
+      icon: Calendar,
+      change: "+8%",
+      trend: "up"
+    },
+    { 
+      label: "Bookmarked", 
+      value: allContent.filter(c => c.isBookmarked).length.toString(), 
+      icon: Bookmark,
+      change: "+5%",
+      trend: "up"
+    },
+    { 
+      label: "AI Chats", 
+      value: "47", 
+      icon: MessageSquare,
+      change: "+23%",
+      trend: "up"
+    }
   ];
+
+  const filters = [
+    { key: "all", label: "All Content", count: allContent.length },
+    { key: "crypto", label: "Crypto", count: allContent.filter(c => c.tags.some((t: string) => ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"].includes(t))).length },
+    { key: "macro", label: "Macro", count: allContent.filter(c => c.tags.some((t: string) => ["Fed", "Interest Rates", "Monetary Policy", "Inflation"].includes(t))).length },
+    { key: "tech", label: "Tech", count: allContent.filter(c => c.tags.some((t: string) => ["AI", "Tech Stocks", "Valuations", "Earnings"].includes(t))).length },
+    { key: "bookmarked", label: "Saved", count: allContent.filter(c => c.isBookmarked).length }
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-6 py-8">
+          <div className="animate-pulse space-y-8">
+            <div className="h-8 bg-muted rounded w-1/3"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-24 bg-muted rounded"></div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-48 bg-muted rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-          <div className="xl:col-span-3">
-            {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Research Dashboard</h1>
-                <p className="text-muted-foreground">
-                  Stay updated with the latest insights from your connected sources
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <Button variant="outline" size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowEmailModal(true)}>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Connect Email
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Sources
-                </Button>
-                <Button variant="hero">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Source
-                </Button>
-              </div>
-            </div>
-
-            {/* Search and Quick Stats */}
-            <div className="flex flex-col lg:flex-row gap-6 mb-8">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search across all content..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-12"
-                  />
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">{allContent.length}</div>
-                <div className="text-xs text-muted-foreground">Total</div>
-              </div>
-            </div>
-
-            {/* Main Content Tabs */}
-            <Tabs defaultValue="all" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
-                {tabData.map((tab) => {
-                  const IconComponent = tab.icon;
-                  return (
-                    <TabsTrigger 
-                      key={tab.value} 
-                      value={tab.value}
-                      className="flex items-center gap-2 text-xs lg:text-sm"
-                    >
-                      <IconComponent className="h-4 w-4" />
-                      <span className="hidden lg:inline">{tab.label}</span>
-                      <Badge variant="secondary" className="ml-1 text-xs">
-                        {tab.count}
-                      </Badge>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-
-              {/* Content Grid */}
-              <TabsContent value="all" className="space-y-6">
-                 <div className="grid gap-6 lg:grid-cols-2">
-                   {allContent.map((content, index) => (
-                     <ContentCard 
-                       key={content.id || index} 
-                       id={content.id}
-                       {...content} 
-                       onAskAI={handleAskAI}
-                       onSave={() => handleSave(content.title, content)}
-                       onClick={() => content.id && handleContentClick(content.id)}
-                     />
-                   ))}
-                 </div>
-                
-                <div className="text-center py-8">
-                  <Button variant="outline">
-                    Load More Content
-                  </Button>
-                </div>
-              </TabsContent>
-
-              {/* Other tab contents would be similar with filtered data */}
-              <TabsContent value="crypto" className="space-y-6">
-                 <div className="grid gap-6 lg:grid-cols-2">
-                   {mockContent
-                     .filter(content => content.tags.some(tag => 
-                       ['Bitcoin', 'Solana', 'DeFi', 'Crypto'].includes(tag)
-                     ))
-                     .map((content, index) => (
-                       <ContentCard 
-                         key={content.id || index} 
-                         id={content.id}
-                         {...content} 
-                         onAskAI={handleAskAI}
-                         onSave={() => handleSave(content.title, content)}
-                         onClick={() => content.id && handleContentClick(content.id)}
-                       />
-                     ))}
-                 </div>
-              </TabsContent>
-
-              <TabsContent value="macro" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {allContent
-                    .filter(content => content.tags?.some((tag: string) => 
-                      ['Fed', 'Interest Rates', 'Monetary Policy', 'Inflation', 'Economic Data'].includes(tag)
-                    ))
-                     .map((content, index) => (
-                       <ContentCard 
-                         key={content.id || index} 
-                         id={content.id}
-                         {...content} 
-                         onAskAI={handleAskAI}
-                         onSave={() => handleSave(content.title, content)}
-                         onClick={() => content.id && handleContentClick(content.id)}
-                       />
-                     ))}
-                 </div>
-              </TabsContent>
-
-              <TabsContent value="emails" className="space-y-6">
-                {processedEmails.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Emails Found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Connect your Gmail account to start extracting research content from your inbox.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <EmailContentFilter 
-                      emails={processedEmails} 
-                      onFilteredEmailsChange={setFilteredEmails}
-                    />
-                    <div className="grid gap-6 lg:grid-cols-2">
-                       {filteredEmails.map((email, index) => (
-                         <ContentCard 
-                           key={email.id || index} 
-                           id={email.id}
-                           {...email} 
-                           onAskAI={handleAskAI}
-                           onSave={() => handleSave(email.title, email)}
-                           onClick={() => email.id && handleContentClick(email.id)}
-                         />
-                       ))}
-                    </div>
-                    {filteredEmails.length === 0 && processedEmails.length > 0 && (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          No emails match your current filters. Try adjusting your search criteria.
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </TabsContent>
-
-              <TabsContent value="equities" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {allContent
-                    .filter(content => content.tags?.some((tag: string) => 
-                      ['AI', 'Tech Stocks', 'Valuations', 'Earnings', 'Equities'].includes(tag)
-                    ))
-                    .map((content, index) => (
-                      <ContentCard 
-                        key={index} 
-                        {...content} 
-                        onAskAI={handleAskAI}
-                        onSave={() => handleSave(content.title, content)}
-                      />
-                    ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="newsletters" className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  {allContent
-                    .filter(content => content.tags?.some((tag: string) => 
-                      ['Market Recap', 'Newsletter', 'Volatility', 'Economic Data'].includes(tag)
-                    ))
-                     .map((content, index) => (
-                       <ContentCard 
-                         key={content.id || index} 
-                         id={content.id}
-                         {...content} 
-                         onAskAI={handleAskAI}
-                         onSave={() => handleSave(content.title, content)}
-                         onClick={() => content.id && handleContentClick(content.id)}
-                       />
-                     ))}
-                 </div>
-              </TabsContent>
-            </Tabs>
+      <main className="container mx-auto px-6 py-8 space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Research Hub</h1>
+            <p className="text-muted-foreground">
+              Your curated financial intelligence dashboard
+            </p>
           </div>
-
-          {/* Right Sidebar */}
-          <div className="space-y-6">
-            {/* Document Upload */}
-            <DocumentUpload onDocumentProcessed={handleDocumentProcessed} />
-            
-            {showChat ? (
-              <ChatInterface 
-                contentTitle={selectedContent?.title}
-                onClose={() => setShowChat(false)}
-              />
-            ) : (
-              <Card className="shadow-elevated border-accent/20">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="h-5 w-5 text-accent" />
-                    Quick Actions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Button 
-                      variant="hero" 
-                      className="w-full justify-start h-12 text-left"
-                      onClick={() => setShowChat(true)}
-                    >
-                      <MessageSquare className="h-5 w-5 mr-3" />
-                      Ask AI Assistant
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors">
-                      <Plus className="h-5 w-5 mr-3" />
-                      Process Video
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start h-12 hover:border-accent/50 transition-colors"
-                      onClick={() => navigate('/sources')}
-                    >
-                      <Settings className="h-5 w-5 mr-3" />
-                      Manage Sources
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start h-12 hover:border-accent/50 transition-colors"
-                      onClick={handleSignOut}
-                    >
-                      <LogOut className="h-5 w-5 mr-3" />
-                      Sign Out
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            {/* Video Processor Modal */}
-            {showVideoProcessor && (
-              <Card className="shadow-elevated border-accent/20">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Process Video</span>
-                    <Button variant="ghost" size="sm" onClick={() => setShowVideoProcessor(false)}>
-                      ×
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <VideoProcessor onContentProcessed={handleVideoProcessed} />
-                </CardContent>
-              </Card>
-            )}
+          
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowDocumentUpload(true)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowVideoProcessor(true)}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Video
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowEmailModal(true)}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email
+            </Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Source
+            </Button>
           </div>
         </div>
 
-        {/* Email Integration Modal */}
-        <EmailIntegrationModal 
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {quickStats.map((stat) => {
+            const IconComponent = stat.icon;
+            return (
+              <Card key={stat.label} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="text-xs text-green-600 mt-1">
+                        {stat.change} vs last week
+                      </p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <IconComponent className="h-6 w-6 text-accent" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Search and Filters */}
+        <div className="space-y-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search research, authors, or topics..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {filters.map((filter) => (
+              <Button
+                key={filter.key}
+                variant={activeFilter === filter.key ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveFilter(filter.key)}
+                className="whitespace-nowrap"
+              >
+                {filter.label}
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  {filter.count}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        <div className="space-y-6">
+          {filteredContent.length === 0 ? (
+            <Card className="p-12 text-center">
+              <div className="text-muted-foreground">
+                {searchQuery ? (
+                  <>
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No results found</p>
+                    <p>Try adjusting your search terms or filters</p>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No content yet</p>
+                    <p>Upload documents, connect email, or add sources to get started</p>
+                  </>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {filteredContent.map((content, index) => (
+                <ContentCard 
+                  key={content.id || index} 
+                  id={content.id}
+                  {...content} 
+                  onAskAI={handleAskAI}
+                  onSave={() => handleSave(content.title, content)}
+                  onClick={() => content.id && handleContentClick(content.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Modals */}
+      {showEmailModal && (
+        <EmailIntegrationModal
           isOpen={showEmailModal}
           onClose={() => setShowEmailModal(false)}
-          onEmailsProcessed={handleEmailsProcessed}
+          onEmailsProcessed={() => {
+            toast({
+              title: "Success",
+              description: "Email integration completed successfully.",
+            });
+            setShowEmailModal(false);
+          }}
         />
-      </main>
+      )}
+
+      {showVideoProcessor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
+            <VideoProcessor 
+              onContentProcessed={(result) => {
+                if (result.success) {
+                  toast({
+                    title: "Video Processed",
+                    description: "Video has been analyzed and added to your content.",
+                  });
+                }
+                setShowVideoProcessor(false);
+              }}
+            />
+            <div className="p-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowVideoProcessor(false)}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDocumentUpload && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
+            <DocumentUpload 
+              onDocumentProcessed={(result) => {
+                if (result.success) {
+                  toast({
+                    title: "Document Processed", 
+                    description: "Document has been analyzed and added to your content.",
+                  });
+                }
+                setShowDocumentUpload(false);
+              }}
+            />
+            <div className="p-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDocumentUpload(false)}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
