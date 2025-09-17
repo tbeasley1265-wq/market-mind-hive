@@ -51,12 +51,34 @@ const ContentDetail = () => {
   const [loading, setLoading] = useState(true);
 
   const handleAskAI = async (message: string): Promise<string> => {
-    // Simulate AI response for now
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(`Here's my analysis of "${content?.title}": ${message} - This is a great question about the content. Based on the summary, I can provide insights about the key themes and implications discussed in this piece.`);
-      }, 1500);
-    });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please log in to use AI chat');
+      }
+
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          message,
+          contentId: content?.id || id, // Use content ID for context
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('AI chat error:', error);
+        throw new Error(error.message || 'Failed to get AI response');
+      }
+
+      return data.message || 'Sorry, I couldn\'t process your request right now.';
+    } catch (error) {
+      console.error('Error calling AI:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response';
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   const handleVideoOverview = () => {
