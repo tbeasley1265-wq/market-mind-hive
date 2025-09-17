@@ -25,15 +25,22 @@ serve(async (req) => {
     );
 
     // Get user from auth header
-    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
-    console.log('Auth header received:', authHeader ? 'Present' : 'Missing');
+    const authHeader = req.headers.get('Authorization');
+    console.log('Full auth header:', authHeader);
     
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('Missing or invalid authorization header');
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Extracted token length:', token.length);
+    
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     console.log('User from auth:', user ? `User ID: ${user.id}` : 'No user found');
     console.log('Auth error:', authError);
     
     if (!user) {
-      throw new Error('User not authenticated');
+      throw new Error(`User not authenticated: ${authError?.message || 'Unknown auth error'}`);
     }
 
     let conversation;
@@ -46,7 +53,7 @@ serve(async (req) => {
         .select('*')
         .eq('id', conversationId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       conversation = data;
     } else if (contentId) {
       // Create new conversation for content
@@ -58,7 +65,7 @@ serve(async (req) => {
           title: message.substring(0, 50) + '...'
         })
         .select()
-        .single();
+        .maybeSingle();
       conversation = data;
     } else {
       // Create general conversation
@@ -69,7 +76,7 @@ serve(async (req) => {
           title: message.substring(0, 50) + '...'
         })
         .select()
-        .single();
+        .maybeSingle();
       conversation = data;
     }
 
@@ -95,7 +102,7 @@ Full Content: ${mockContent.full_content}
           .select('title, summary, full_content, author, platform')
           .eq('id', contentId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (contentData) {
           contentContext = `
