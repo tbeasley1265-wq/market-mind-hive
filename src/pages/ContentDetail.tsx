@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import FloatingAIInterface from "@/components/content/FloatingAIInterface";
 import { 
   ArrowLeft,
   ExternalLink, 
@@ -48,6 +49,21 @@ const ContentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [content, setContent] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleAskAI = async (message: string) => {
+    toast.success(`AI Question: "${message}"`);
+    // TODO: Implement AI chat functionality
+  };
+
+  const handleVideoOverview = () => {
+    toast.success("Generating video overview...");
+    // TODO: Implement video overview generation
+  };
+
+  const handleAudioOverview = () => {
+    toast.success("Generating audio overview...");
+    // TODO: Implement audio overview (text-to-speech)
+  };
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -262,10 +278,6 @@ const ContentDetail = () => {
                 </a>
               </Button>
             )}
-            <Button variant="outline" size="sm">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Ask AI
-            </Button>
           </div>
         </div>
 
@@ -345,6 +357,15 @@ const ContentDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Floating AI Interface */}
+      <FloatingAIInterface
+        contentTitle={content.title}
+        contentSummary={content.summary || ""}
+        onAskAI={handleAskAI}
+        onVideoOverview={handleVideoOverview}
+        onAudioOverview={handleAudioOverview}
+      />
     </div>
   );
 };
