@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import MarketMindsLogo from "@/components/ui/MarketMindsLogo";
 import { 
   Send, 
   Video, 
@@ -10,8 +11,7 @@ import {
   MessageSquare,
   X,
   Loader2,
-  User,
-  Bot
+  User
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -107,9 +107,9 @@ const FloatingAIInterface = ({
             <Card className="bg-background/95 backdrop-blur-md border shadow-lg">
               <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-accent" />
+                  <MarketMindsLogo size={20} />
                   <h3 className="text-sm font-medium text-foreground">
-                    AI Conversation
+                    Market Minds AI
                   </h3>
                 </div>
                 <Button
@@ -133,8 +133,8 @@ const FloatingAIInterface = ({
                       className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {msg.role === 'assistant' && (
-                        <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="h-4 w-4 text-accent" />
+                        <div className="flex-shrink-0 mt-1">
+                          <MarketMindsLogo size={32} />
                         </div>
                       )}
                       
@@ -167,13 +167,13 @@ const FloatingAIInterface = ({
                       animate={{ opacity: 1, y: 0 }}
                       className="flex gap-3 justify-start"
                     >
-                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-4 w-4 text-accent" />
+                      <div className="flex-shrink-0 mt-1">
+                        <MarketMindsLogo size={32} />
                       </div>
                       <div className="bg-muted rounded-lg px-4 py-2">
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                          <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                          <span className="text-sm text-muted-foreground">Market Minds AI is analyzing...</span>
                         </div>
                       </div>
                     </motion.div>
