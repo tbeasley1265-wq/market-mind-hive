@@ -303,10 +303,6 @@ const Dashboard = () => {
               <Upload className="h-4 w-4 mr-2" />
               Upload Sources
             </Button>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
           </div>
         </div>
 
