@@ -26,7 +26,11 @@ serve(async (req) => {
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader);
+    console.log('Auth header received:', authHeader ? 'Present' : 'Missing');
+    
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader);
+    console.log('User from auth:', user ? `User ID: ${user.id}` : 'No user found');
+    console.log('Auth error:', authError);
     
     if (!user) {
       throw new Error('User not authenticated');
@@ -71,23 +75,60 @@ serve(async (req) => {
 
     // Get content context if contentId provided
     if (contentId) {
-      const { data: contentData } = await supabaseClient
-        .from('content_items')
-        .select('title, summary, full_content, author, platform')
-        .eq('id', contentId)
-        .eq('user_id', user.id)
-        .single();
-      
-      if (contentData) {
-        contentContext = `
+      // Handle mock content
+      if (contentId.startsWith('mock-')) {
+        const mockContent = getMockContent(contentId);
+        if (mockContent) {
+          contentContext = `
+Content Context:
+Title: ${mockContent.title}
+Author: ${mockContent.author}
+Platform: ${mockContent.platform}
+Summary: ${mockContent.summary}
+Full Content: ${mockContent.full_content}
+          `;
+        }
+      } else {
+        // Handle real database content
+        const { data: contentData } = await supabaseClient
+          .from('content_items')
+          .select('title, summary, full_content, author, platform')
+          .eq('id', contentId)
+          .eq('user_id', user.id)
+          .single();
+        
+        if (contentData) {
+          contentContext = `
 Content Context:
 Title: ${contentData.title}
 Author: ${contentData.author}
 Platform: ${contentData.platform}
 Summary: ${contentData.summary}
 Full Content: ${contentData.full_content}
-        `;
+          `;
+        }
       }
+    }
+
+    // Mock content data for development
+    function getMockContent(contentId: string) {
+      const mockData: Record<string, any> = {
+        'mock-1': {
+          title: "Crypto Market Analysis Q4 2024",
+          author: "Alex Chen",
+          platform: "CoinDesk",
+          summary: "A comprehensive analysis of the cryptocurrency market trends in Q4 2024, covering Bitcoin's resilience, Ethereum's upgrade impact, and emerging altcoin opportunities.",
+          full_content: "The cryptocurrency market in Q4 2024 has shown remarkable resilience despite regulatory uncertainties. Bitcoin has maintained its position above $40,000, driven by institutional adoption and increasing acceptance as a store of value. Ethereum's recent network upgrades have significantly improved transaction efficiency, positioning it strongly for continued DeFi growth. Key altcoins including Solana, Cardano, and Polygon have demonstrated strong fundamentals and growing ecosystems. Market analysts predict continued bullish sentiment heading into 2025, with particular strength expected in the DeFi and NFT sectors."
+        },
+        'mock-2': {
+          title: "Federal Reserve Policy Impact on Markets",
+          author: "Sarah Johnson",
+          platform: "Financial Times",
+          summary: "Analysis of how recent Federal Reserve policy changes are affecting various asset classes and what investors should expect in the coming months.",
+          full_content: "The Federal Reserve's recent policy adjustments have created significant ripple effects across financial markets. With interest rates remaining elevated, traditional bond investments are showing renewed attractiveness while growth stocks face continued pressure. The Fed's commitment to fighting inflation has strengthened the dollar but created headwinds for commodities and international investments. Investors are advised to maintain diversified portfolios and consider defensive positioning as monetary policy continues to evolve."
+        }
+      };
+      return mockData[contentId];
     }
 
     // Get conversation history
