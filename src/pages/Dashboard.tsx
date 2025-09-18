@@ -369,266 +369,224 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          {/* Main Content Area */}
-          <div className="xl:col-span-3 space-y-8">
-            {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Research Hub</h1>
-                <p className="text-muted-foreground">
-                  Your curated financial intelligence dashboard
-                </p>
+      <main className="container mx-auto px-6 py-8 space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Research Hub</h1>
+            <p className="text-muted-foreground">
+              Your curated financial intelligence dashboard
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowUploadSourcesModal(true)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Sources
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {quickStats.map((stat) => {
+            const IconComponent = stat.icon;
+            return (
+              <Card key={stat.label} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <IconComponent className="h-6 w-6 text-accent" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* AI Chat Bar */}
+        <Card className="border-card-border shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <MarketMindsLogo size={24} />
+                <span className="text-sm font-medium text-foreground hidden sm:inline">Market Minds AI</span>
               </div>
               
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Ask about your research, market trends, or get insights..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="pr-12"
+                  disabled={isLoading}
+                />
+                <Button
                   size="sm"
-                  onClick={() => setShowUploadSourcesModal(true)}
+                  onClick={handleSendMessage}
+                  disabled={!message.trim() || isLoading}
+                  className="absolute right-1 top-1 h-8 w-8 p-0"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Sources
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {quickStats.map((stat) => {
-                const IconComponent = stat.icon;
-                return (
-                  <Card key={stat.label} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                          <p className="text-2xl font-bold">{stat.value}</p>
+            
+            {/* Chat Messages - Collapsible */}
+            {messages.length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <ScrollArea className="h-48 pr-4">
+                  <div className="space-y-3">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {msg.role === 'assistant' && (
+                          <div className="flex-shrink-0 mt-1">
+                            <MarketMindsLogo size={20} />
+                          </div>
+                        )}
+                        
+                        <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-2' : ''}`}>
+                          <div
+                            className={`rounded-lg px-3 py-2 text-sm ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground ml-auto'
+                                : 'bg-muted text-foreground'
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatTime(msg.timestamp)}
+                          </p>
                         </div>
-                        <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                          <IconComponent className="h-6 w-6 text-accent" />
+                        
+                        {msg.role === 'user' && (
+                          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
+                            <User className="h-3 w-3 text-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {isLoading && (
+                      <div className="flex gap-2 justify-start">
+                        <MarketMindsLogo size={20} />
+                        <div className="bg-muted rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                            <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                          </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {/* Search and Filters */}
-            <div className="space-y-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search research, authors, or topics..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12"
-                />
-              </div>
-              
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {filters.map((filter) => (
-                  <Button
-                    key={filter.key}
-                    variant={activeFilter === filter.key ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveFilter(filter.key)}
-                    className="whitespace-nowrap"
-                  >
-                    {filter.label}
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {filter.count}
-                    </Badge>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Content Grid */}
-            <div className="space-y-6">
-              {filteredContent.length === 0 ? (
-                <Card className="p-12 text-center">
-                  <div className="text-muted-foreground">
-                    {searchQuery ? (
-                      <>
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg mb-2">No results found</p>
-                        <p>Try adjusting your search terms or filters</p>
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg mb-2">No content yet</p>
-                        <p>Upload documents, connect email, or add sources to get started</p>
-                      </>
                     )}
                   </div>
-                </Card>
-              ) : (
-                <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2">
-                  {filteredContent.map((content, index) => (
-                    <ContentCard 
-                      key={content.id || index} 
-                      id={content.id}
-                      {...content} 
-                      onAskAI={(title) => {
-                        const aiMessage = `Tell me more about: ${title}`;
-                        setMessage(aiMessage);
-                        handleSendMessage();
-                      }}
-                      onSave={() => handleSave(content.title, content)}
-                      onClick={() => content.id && handleContentClick(content.id)}
-                    />
-                  ))}
+                </ScrollArea>
+                
+                <div className="flex justify-between items-center mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMessages([])}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear chat
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {messages.length} message{messages.length !== 1 ? 's' : ''}
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Search and Filters */}
+        <div className="space-y-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search research, authors, or topics..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12"
+            />
           </div>
-
-          {/* AI Chat Sidebar */}
-          <div className="xl:col-span-1">
-            <Card className="border-card-border shadow-card h-[calc(100vh-8rem)] flex flex-col sticky top-8">
-              <CardHeader className="border-b bg-muted/30">
-                <div className="flex items-center gap-2">
-                  <MarketMindsLogo size={24} />
-                  <div>
-                    <CardTitle className="text-lg">Market Minds AI</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Ask about your research
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              {/* Messages Area */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  {messages.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-sm mb-4">Welcome to Market Minds AI!</p>
-                      <div className="space-y-2 text-xs">
-                        <p>Try asking:</p>
-                        <div className="space-y-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-2 text-xs text-left justify-start"
-                            onClick={() => {
-                              setMessage("What are the key themes in my research?");
-                              setTimeout(() => handleSendMessage(), 100);
-                            }}
-                          >
-                            "What are the key themes in my research?"
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-2 text-xs text-left justify-start"
-                            onClick={() => {
-                              setMessage("Summarize recent market developments");
-                              setTimeout(() => handleSendMessage(), 100);
-                            }}
-                          >
-                            "Summarize recent market developments"
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-2 text-xs text-left justify-start"
-                            onClick={() => {
-                              setMessage("What should I research next?");
-                              setTimeout(() => handleSendMessage(), 100);
-                            }}
-                          >
-                            "What should I research next?"
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {msg.role === 'assistant' && (
-                        <div className="flex-shrink-0 mt-1">
-                          <MarketMindsLogo size={28} />
-                        </div>
-                      )}
-                      
-                      <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-2' : ''}`}>
-                        <div
-                          className={`rounded-lg px-3 py-2 ${
-                            msg.role === 'user'
-                              ? 'bg-primary text-primary-foreground ml-auto'
-                              : 'bg-muted text-foreground'
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{msg.content}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 px-1">
-                          {formatTime(msg.timestamp)}
-                        </p>
-                      </div>
-                      
-                      {msg.role === 'user' && (
-                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
-                          <User className="h-4 w-4 text-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {isLoading && (
-                    <div className="flex gap-3 justify-start">
-                      <div className="flex-shrink-0 mt-1">
-                        <MarketMindsLogo size={28} />
-                      </div>
-                      <div className="bg-muted rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-sm text-muted-foreground">AI is thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-              
-              {/* Input Area */}
-              <div className="border-t p-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ask about your research..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!message.trim() || isLoading}
-                    size="sm"
-                    className="px-3"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </Card>
+          
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {filters.map((filter) => (
+              <Button
+                key={filter.key}
+                variant={activeFilter === filter.key ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveFilter(filter.key)}
+                className="whitespace-nowrap"
+              >
+                {filter.label}
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  {filter.count}
+                </Badge>
+              </Button>
+            ))}
           </div>
         </div>
-      </div>
+
+        {/* Content Grid */}
+        <div className="space-y-6">
+          {filteredContent.length === 0 ? (
+            <Card className="p-12 text-center">
+              <div className="text-muted-foreground">
+                {searchQuery ? (
+                  <>
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No results found</p>
+                    <p>Try adjusting your search terms or filters</p>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No content yet</p>
+                    <p>Upload documents, connect email, or add sources to get started</p>
+                  </>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {filteredContent.map((content, index) => (
+                <ContentCard 
+                  key={content.id || index} 
+                  id={content.id}
+                  {...content} 
+                  onAskAI={(title) => {
+                    const aiMessage = `Tell me more about: ${title}`;
+                    setMessage(aiMessage);
+                    handleSendMessage();
+                  }}
+                  onSave={() => handleSave(content.title, content)}
+                  onClick={() => content.id && handleContentClick(content.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Modals */}
       <UploadSourcesModal
