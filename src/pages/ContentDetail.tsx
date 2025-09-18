@@ -17,7 +17,9 @@ import {
   FileText,
   Twitter,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Play,
+  Volume2
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -305,6 +307,25 @@ const ContentDetail = () => {
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Overview Buttons */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            onClick={handleVideoOverview}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+          >
+            <Play className="h-4 w-4" />
+            Show Video Overview
+          </Button>
+          <Button 
+            onClick={handleAudioOverview}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Volume2 className="h-4 w-4" />
+            Show Audio Overview
+          </Button>
         </div>
 
         <Card className="border-card-border shadow-card">
