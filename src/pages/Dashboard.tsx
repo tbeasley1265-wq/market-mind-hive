@@ -230,7 +230,6 @@ const Dashboard = () => {
       timestamp: "2 hours ago",
       summary: "Deep dive into the recent Bitcoin ETF approval and its implications for institutional adoption. Raoul discusses the potential for $100B+ inflows and what this means for BTC price action in the coming quarters.",
       tags: ["Bitcoin", "ETF", "Institutional", "Regulation"],
-      
       originalUrl: "https://youtube.com/watch?v=example",
       isBookmarked: false
     },
@@ -243,7 +242,6 @@ const Dashboard = () => {
       timestamp: "4 hours ago",
       summary: "Analysis of the latest Fed decision and its impact on markets. Key insights on inflation targeting, employment data, and the path forward for monetary policy in 2024.",
       tags: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
-      
       originalUrl: "https://substack.com/example",
       isBookmarked: false
     },
@@ -256,8 +254,91 @@ const Dashboard = () => {
       timestamp: "6 hours ago",
       summary: "Comprehensive analysis of recent tech earnings with focus on AI companies. Examines valuation multiples, revenue growth sustainability, and potential market corrections.",
       tags: ["AI", "Tech Stocks", "Valuations", "Earnings"],
-      
       originalUrl: "https://substack.com/example2",
+      isBookmarked: false
+    },
+    {
+      id: "mock-4",
+      title: "Solana DeFi Ecosystem Update: TVL Hits All-Time High",
+      source: "DeFi Pulse",
+      platform: "twitter" as const,
+      author: "DeFi Analyst",
+      timestamp: "8 hours ago",
+      summary: "Solana's DeFi ecosystem has reached a new milestone with $2.5B TVL. Key drivers include Jupiter's growth, new DEX launches, and improved network stability after recent upgrades.",
+      tags: ["Solana", "DeFi", "TVL", "Crypto"],
+      originalUrl: "https://twitter.com/example",
+      isBookmarked: true
+    },
+    {
+      id: "mock-5",
+      title: "OpenAI GPT-5 Development Updates: What We Know So Far",
+      source: "AI Research Weekly",
+      platform: "email" as const,
+      author: "Sarah Chen",
+      timestamp: "12 hours ago",
+      summary: "Latest insights into GPT-5 development timeline, expected capabilities, and potential market impact. Includes analysis of computational requirements and competitive landscape.",
+      tags: ["AI", "OpenAI", "GPT-5", "Tech Stocks"],
+      originalUrl: "https://example.com/newsletter",
+      isBookmarked: false
+    },
+    {
+      id: "mock-6",
+      title: "Inflation Data Surprises Markets: What's Next for Bonds?",
+      source: "Bond Vigilantes",
+      platform: "substack" as const,
+      author: "Michael Grant",
+      timestamp: "1 day ago",
+      summary: "Unexpected inflation reading sends shockwaves through bond markets. Analysis of yield curve implications, Fed response scenarios, and portfolio positioning strategies.",
+      tags: ["Inflation", "Bonds", "Fed", "Monetary Policy"],
+      originalUrl: "https://substack.com/bonds",
+      isBookmarked: false
+    },
+    {
+      id: "mock-7",
+      title: "Tesla's FSD Beta Performance Analysis",
+      source: "Autonomous World",
+      platform: "youtube" as const,
+      author: "Tech Reviewer Pro",
+      timestamp: "1 day ago",
+      summary: "Comprehensive testing of Tesla's latest FSD beta version across various scenarios. Data-driven analysis of improvements, limitations, and competitive positioning against Waymo.",
+      tags: ["Tesla", "AI", "Autonomous", "Tech Stocks"],
+      originalUrl: "https://youtube.com/tesla-fsd",
+      isBookmarked: true
+    },
+    {
+      id: "mock-8",
+      title: "European Energy Crisis: Investment Opportunities in Renewables",
+      source: "Energy Transition Weekly",
+      platform: "email" as const,
+      author: "Elena Rodriguez",
+      timestamp: "2 days ago",
+      summary: "Deep dive into European energy markets and the accelerated transition to renewables. Identifies key investment themes and companies positioned to benefit from policy changes.",
+      tags: ["Energy", "Renewables", "Europe", "ESG"],
+      originalUrl: "https://example.com/energy",
+      isBookmarked: false
+    },
+    {
+      id: "mock-9",
+      title: "Nvidia's Data Center Revenue Projections",
+      source: "Semiconductor Insights",
+      platform: "substack" as const,
+      author: "Chip Analysis Team",
+      timestamp: "2 days ago",
+      summary: "Analysis of Nvidia's data center segment growth trajectory. Examines AI chip demand, competitive threats, and margin sustainability in the enterprise market.",
+      tags: ["Nvidia", "AI", "Semiconductors", "Tech Stocks"],
+      originalUrl: "https://substack.com/nvidia",
+      isBookmarked: false
+    },
+    {
+      id: "mock-10",
+      title: "China's Property Market Stabilization Efforts",
+      source: "Asia Markets Today",
+      platform: "twitter" as const,
+      author: "Beijing Correspondent",
+      timestamp: "3 days ago",
+      summary: "Latest government interventions in China's property sector show signs of stabilization. Impact on commodities, global growth, and emerging market currencies analyzed.",
+      tags: ["China", "Real Estate", "Emerging Markets", "Commodities"],
+      originalUrl: "https://twitter.com/china-property",
       isBookmarked: false
     }
   ];
