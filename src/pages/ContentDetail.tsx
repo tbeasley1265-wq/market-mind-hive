@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import FloatingAIInterface from "@/components/content/FloatingAIInterface";
 import { 
   ArrowLeft,
   ExternalLink, 
@@ -19,16 +18,28 @@ import {
   Mail,
   MessageSquare,
   Play,
-  Volume2
+  Volume2,
+  Send,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import MarketMindsLogo from "@/components/ui/MarketMindsLogo";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ContentItem = Database['public']['Tables']['content_items']['Row'] & {
   source?: string;
   tags?: string[];
   sentiment?: "bullish" | "bearish" | "neutral";
 };
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
 
 const platformIcons = {
   youtube: Youtube,
@@ -51,6 +62,9 @@ const ContentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [content, setContent] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAskAI = async (message: string): Promise<string> => {
     try {
@@ -91,6 +105,56 @@ const ContentDetail = () => {
   const handleAudioOverview = () => {
     toast.success("Generating audio overview...");
     // TODO: Implement audio overview (text-to-speech)
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: message.trim(),
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setMessage("");
+    setIsLoading(true);
+    
+    try {
+      const response = await handleAskAI(userMessage.content);
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response || "I'm processing your question about this content. This feature is coming soon!",
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I apologize, but I encountered an error. Please try again.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   useEffect(() => {
@@ -285,7 +349,7 @@ const ContentDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button 
@@ -328,91 +392,191 @@ const ContentDetail = () => {
           </Button>
         </div>
 
-        <Card className="border-card-border shadow-card">
-          <CardHeader className="space-y-4">
-            {/* Platform and metadata */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 rounded-lg ${platformColor} flex items-center justify-center`}>
-                  <PlatformIcon className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base font-semibold text-foreground capitalize">{content.source || content.platform}</span>
-                    {content.sentiment && (
-                      <Badge variant="outline" className={getSentimentColor(content.sentiment)}>
-                        {getSentimentIcon(content.sentiment)}
-                        <span className="ml-1 capitalize">{content.sentiment}</span>
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2 mt-1 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    <span>{content.author || "Unknown Author"}</span>
-                    <span>•</span>
-                    <Clock className="h-4 w-4" />
-                    <span>{formatDate(content.created_at)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Title */}
-            <CardTitle className="text-2xl leading-tight">
-              {content.title}
-            </CardTitle>
-
-            {/* Tags */}
-            {content.tags && content.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {content.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            <Separator />
-            
-            {/* Summary */}
-            {content.summary && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Summary</h3>
-                <CardDescription className="text-base leading-relaxed">
-                  {content.summary}
-                </CardDescription>
-              </div>
-            )}
-
-            {/* Full Content */}
-            {content.full_content && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Full Content</h3>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <div className="text-foreground leading-relaxed whitespace-pre-wrap">
-                      {content.full_content}
+        {/* Main Content Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Content Area */}
+          <div className="lg:col-span-2">
+            <Card className="border-card-border shadow-card">
+              <CardHeader className="space-y-4">
+                {/* Platform and metadata */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-12 h-12 rounded-lg ${platformColor} flex items-center justify-center`}>
+                      <PlatformIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base font-semibold text-foreground capitalize">{content.source || content.platform}</span>
+                        {content.sentiment && (
+                          <Badge variant="outline" className={getSentimentColor(content.sentiment)}>
+                            {getSentimentIcon(content.sentiment)}
+                            <span className="ml-1 capitalize">{content.sentiment}</span>
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1 text-sm text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        <span>{content.author || "Unknown Author"}</span>
+                        <span>•</span>
+                        <Clock className="h-4 w-4" />
+                        <span>{formatDate(content.created_at)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Floating AI Interface */}
-      <FloatingAIInterface
-        contentTitle={content.title}
-        contentSummary={content.summary || ""}
-        onAskAI={handleAskAI}
-        onVideoOverview={handleVideoOverview}
-        onAudioOverview={handleAudioOverview}
-      />
+                {/* Title */}
+                <CardTitle className="text-2xl leading-tight">
+                  {content.title}
+                </CardTitle>
+
+                {/* Tags */}
+                {content.tags && content.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {content.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                <Separator />
+                
+                {/* Summary */}
+                {content.summary && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Summary</h3>
+                    <CardDescription className="text-base leading-relaxed">
+                      {content.summary}
+                    </CardDescription>
+                  </div>
+                )}
+
+                {/* Full Content */}
+                {content.full_content && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Full Content</h3>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="text-foreground leading-relaxed whitespace-pre-wrap">
+                          {content.full_content}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Chat Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="border-card-border shadow-card h-[600px] flex flex-col">
+              <CardHeader className="border-b bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <MarketMindsLogo size={24} />
+                  <div>
+                    <CardTitle className="text-lg">Market Minds AI</CardTitle>
+                    <CardDescription className="text-sm">
+                      Ask questions about this content
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              {/* Messages Area */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
+                  {messages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Start a conversation about this content</p>
+                    </div>
+                  )}
+                  
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {msg.role === 'assistant' && (
+                        <div className="flex-shrink-0 mt-1">
+                          <MarketMindsLogo size={28} />
+                        </div>
+                      )}
+                      
+                      <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-2' : ''}`}>
+                        <div
+                          className={`rounded-lg px-3 py-2 ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground ml-auto'
+                              : 'bg-muted text-foreground'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 px-1">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                      </div>
+                      
+                      {msg.role === 'user' && (
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
+                          <User className="h-4 w-4 text-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {isLoading && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="flex-shrink-0 mt-1">
+                        <MarketMindsLogo size={28} />
+                      </div>
+                      <div className="bg-muted rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              
+              {/* Input Area */}
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ask about this content..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || isLoading}
+                    size="sm"
+                    className="px-3"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
