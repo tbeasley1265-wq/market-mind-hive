@@ -15,11 +15,6 @@ import {
   Mail,
   MessageSquare,
   Filter,
-  Calendar,
-  Bookmark,
-  Clock,
-  ArrowUpRight,
-  Settings,
   Upload,
   Play,
   Send,
@@ -310,30 +305,6 @@ const Dashboard = () => {
     );
   });
 
-  const quickStats = [
-    { 
-      label: "Total Content", 
-      value: allContent.length.toString(), 
-      icon: FileText,
-      change: "",
-      trend: "up"
-    },
-    { 
-      label: "This Week", 
-      value: "24", 
-      icon: Calendar,
-      change: "",
-      trend: "up"
-    },
-    { 
-      label: "Bookmarked", 
-      value: allContent.filter(c => c.isBookmarked).length.toString(), 
-      icon: Bookmark,
-      change: "",
-      trend: "up"
-    }
-  ];
-
   const filters = [
     { key: "all", label: "All Content", count: allContent.length },
     { key: "crypto", label: "Crypto", count: allContent.filter(c => c.tags.some((t: string) => ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"].includes(t))).length },
@@ -389,28 +360,6 @@ const Dashboard = () => {
               Upload Sources
             </Button>
           </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {quickStats.map((stat) => {
-            const IconComponent = stat.icon;
-            return (
-              <Card key={stat.label} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                      <p className="text-2xl font-bold">{stat.value}</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                      <IconComponent className="h-6 w-6 text-accent" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
         </div>
 
         {/* AI Chat Bar */}
