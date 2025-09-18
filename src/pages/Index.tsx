@@ -104,7 +104,7 @@ const Index = () => {
       {/* Market Minds Logo - Top Left */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
         <img src={marketMindsLogo} alt="Market Minds Logo" className="w-8 h-8" />
-        <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent text-2xl font-bold">
+        <span className="text-foreground text-2xl font-bold">
           Market Minds
         </span>
       </div>
