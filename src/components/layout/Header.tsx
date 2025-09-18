@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   NavigationMenu,
@@ -19,13 +20,13 @@ const Header = () => {
       <div className="container mx-auto px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-gradient-accent flex items-center justify-center">
               <Brain className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-foreground">Market Minds</span>
             <Badge variant="secondary" className="ml-2">Beta</Badge>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <NavigationMenu className="hidden lg:flex">
