@@ -159,20 +159,6 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto animate-fade-in-up">
-              <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                <CheckCircle className="h-5 w-5 text-success" />
-                <span className="font-medium">14-day free trial</span>
-              </div>
-              <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                <CheckCircle className="h-5 w-5 text-success" />
-                <span className="font-medium">No credit card required</span>
-              </div>
-              <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                <CheckCircle className="h-5 w-5 text-success" />
-                <span className="font-medium">Cancel anytime</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
