@@ -239,13 +239,6 @@ const Dashboard = () => {
       icon: Bookmark,
       change: "",
       trend: "up"
-    },
-    { 
-      label: "AI Chats", 
-      value: "47", 
-      icon: MessageSquare,
-      change: "",
-      trend: "up"
     }
   ];
 
