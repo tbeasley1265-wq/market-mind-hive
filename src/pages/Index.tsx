@@ -101,15 +101,41 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Market Minds Logo - Header */}
-      <div className="container mx-auto px-6 pt-6 pb-4">
-        <div className="flex items-center gap-3">
-          <img src={marketMindsLogo} alt="Market Minds Logo" className="w-12 h-12" />
-          <span className="text-foreground text-2xl font-bold">
-            Market Minds
-          </span>
+      {/* Header Navigation */}
+      <header className="container mx-auto px-6 pt-6 pb-4">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <img src={marketMindsLogo} alt="Market Minds Logo" className="w-12 h-12" />
+            <span className="text-foreground text-2xl font-bold">
+              Market Minds
+            </span>
+          </div>
+
+          {/* Navigation Tabs */}
+          <nav className="hidden md:flex items-center gap-8">
+            <button className="text-foreground hover:text-accent transition-colors font-medium">
+              Use Cases
+            </button>
+            <button className="text-foreground hover:text-accent transition-colors font-medium">
+              About
+            </button>
+            <button className="text-foreground hover:text-accent transition-colors font-medium">
+              Pricing
+            </button>
+          </nav>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" asChild>
+              <Link to="/auth?tab=signin">Login</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/auth">Get Started</Link>
+            </Button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Floating Background Elements */} 
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
