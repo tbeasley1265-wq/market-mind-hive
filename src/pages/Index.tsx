@@ -101,12 +101,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Market Minds Logo - Top Left */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
-        <img src={marketMindsLogo} alt="Market Minds Logo" className="w-12 h-12" />
-        <span className="text-foreground text-2xl font-bold">
-          Market Minds
-        </span>
+      {/* Market Minds Logo - Header */}
+      <div className="container mx-auto px-6 pt-6 pb-4">
+        <div className="flex items-center gap-3">
+          <img src={marketMindsLogo} alt="Market Minds Logo" className="w-12 h-12" />
+          <span className="text-foreground text-2xl font-bold">
+            Market Minds
+          </span>
+        </div>
       </div>
 
       {/* Floating Background Elements */} 
