@@ -120,9 +120,9 @@ const Index = () => {
             <button className="text-foreground hover:text-accent transition-colors font-medium">
               About
             </button>
-            <button className="text-foreground hover:text-accent transition-colors font-medium">
+            <Link to="/pricing" className="text-foreground hover:text-accent transition-colors font-medium">
               Pricing
-            </button>
+            </Link>
           </nav>
 
           {/* Action Buttons */}
