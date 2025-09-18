@@ -574,12 +574,6 @@ const Dashboard = () => {
                   key={content.id || index} 
                   id={content.id}
                   {...content} 
-                  onAskAI={(title) => {
-                    const aiMessage = `Tell me more about: ${title}`;
-                    setMessage(aiMessage);
-                    handleSendMessage();
-                  }}
-                  onSave={() => handleSave(content.title, content)}
                   onClick={() => content.id && handleContentClick(content.id)}
                 />
               ))}

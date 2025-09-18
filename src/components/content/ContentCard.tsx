@@ -2,7 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  MessageSquare, 
   ExternalLink, 
   Clock, 
   User,
@@ -22,8 +21,6 @@ interface ContentCardProps {
   summary: string;
   tags: string[];
   originalUrl?: string;
-  onAskAI?: (title: string, url?: string) => void;
-  onSave?: () => void;
   onClick?: () => void;
 }
 
@@ -53,8 +50,6 @@ const ContentCard = ({
   summary,
   tags,
   originalUrl,
-  onAskAI,
-  onSave,
   onClick
 }: ContentCardProps) => {
   const PlatformIcon = platformIcons[platform];
@@ -120,31 +115,6 @@ const ContentCard = ({
             )}
           </div>
         )}
-        
-        <div className="flex items-center justify-between pt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 mr-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAskAI?.(title, originalUrl);
-            }}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Ask AI
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onSave?.();
-            }}
-          >
-            Save
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
