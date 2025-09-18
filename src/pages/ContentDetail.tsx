@@ -351,146 +351,223 @@ const ContentDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="p-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            {content.original_url && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={content.original_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Original
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Overview Buttons */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            onClick={handleVideoOverview}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Play className="h-4 w-4" />
+            Video Overview
+          </Button>
+          <Button 
+            onClick={handleAudioOverview}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Volume2 className="h-4 w-4" />
+            Audio Overview
           </Button>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <div className={`p-2 rounded-lg ${platformColor}`}>
-                <PlatformIcon className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-sm capitalize">{content.source || content.platform}</span>
-            </div>
-            {content.sentiment && (
-              <Badge variant="outline" className={getSentimentColor(content.sentiment)}>
-                {getSentimentIcon(content.sentiment)}
-                <span className="ml-1 capitalize">{content.sentiment}</span>
-              </Badge>
-            )}
-          </div>
-
-          <h1 className="text-3xl font-bold mb-4">{content.title}</h1>
-          
-          <div className="flex items-center gap-4 text-muted-foreground mb-6">
-            <span>{content.author || "Unknown Author"}</span>
-            <span>•</span>
-            <span>{formatDate(content.created_at)}</span>
-            {content.original_url && (
-              <>
-                <span>•</span>
-                <a href={content.original_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  View Original
-                </a>
-              </>
-            )}
-          </div>
-
-          {content.summary && (
-            <div className="bg-card rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-3">Summary</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {content.summary}
-              </p>
-            </div>
-          )}
-
-          {content.full_content && (
-            <div className="bg-card rounded-lg p-6 mb-8">
-              <h2 className="text-xl font-semibold mb-3">Full Content</h2>
-              <div className="prose prose-neutral dark:prose-invert max-w-none">
-                <p className="leading-relaxed whitespace-pre-wrap">
-                  {content.full_content}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Floating AI Interface */}
-          <div className="bg-card/90 backdrop-blur-sm border rounded-xl p-6 mb-6 shadow-lg">
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 mb-4">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <BookmarkPlus className="h-4 w-4 mr-2" />
-                Save to note
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <ThumbsUp className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <ThumbsDown className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Chat Messages */}
-            {messages.length > 0 && (
-              <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    <div
-                      className={`flex gap-2 max-w-[85%] ${
-                        message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                      }`}
-                    >
-                      <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarFallback className="text-xs">
-                          {message.role === 'user' ? 'U' : 'AI'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className={`rounded-lg p-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
-                        <span className="text-xs opacity-70 mt-1 block">
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
+        {/* Main Content Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Content Area */}
+          <div className="lg:col-span-2">
+            <Card className="border-card-border shadow-card">
+              <CardHeader className="space-y-4">
+                {/* Platform and metadata */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-12 h-12 rounded-lg ${platformColor} flex items-center justify-center`}>
+                      <PlatformIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base font-semibold text-foreground capitalize">{content.source || content.platform}</span>
+                        {content.sentiment && (
+                          <Badge variant="outline" className={getSentimentColor(content.sentiment)}>
+                            {getSentimentIcon(content.sentiment)}
+                            <span className="ml-1 capitalize">{content.sentiment}</span>
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1 text-sm text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        <span>{content.author || "Unknown Author"}</span>
+                        <span>•</span>
+                        <Clock className="h-4 w-4" />
+                        <span>{formatDate(content.created_at)}</span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
 
-            {/* Input Area */}
-            <div className="relative">
-              <div className="flex items-center gap-3 bg-background border rounded-xl p-3">
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Start typing..."
-                  className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-                  disabled={isLoading}
-                />
+                {/* Title */}
+                <CardTitle className="text-2xl leading-tight">
+                  {content.title}
+                </CardTitle>
+
+                {/* Tags */}
+                {content.tags && content.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {content.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                <Separator />
+                
+                {/* Summary */}
+                {content.summary && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Summary</h3>
+                    <CardDescription className="text-base leading-relaxed">
+                      {content.summary}
+                    </CardDescription>
+                  </div>
+                )}
+
+                {/* Full Content */}
+                {content.full_content && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">Full Content</h3>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="text-foreground leading-relaxed whitespace-pre-wrap">
+                          {content.full_content}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Chat Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="border-card-border shadow-card h-[600px] flex flex-col">
+              <CardHeader className="border-b bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">2 sources</span>
-                  <Button 
-                    size="sm"
-                    onClick={handleSendMessage} 
+                  <MarketMindsLogo size={24} />
+                  <div>
+                    <CardTitle className="text-lg">Market Minds AI</CardTitle>
+                    <CardDescription className="text-sm">
+                      Ask questions about this content
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              {/* Messages Area */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  {messages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">Start a conversation about this content</p>
+                    </div>
+                  )}
+                  
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {msg.role === 'assistant' && (
+                        <div className="flex-shrink-0 mt-1">
+                          <MarketMindsLogo size={28} />
+                        </div>
+                      )}
+                      
+                      <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-2' : ''}`}>
+                        <div
+                          className={`rounded-lg px-3 py-2 ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground ml-auto'
+                              : 'bg-muted text-foreground'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 px-1">
+                          {formatTime(msg.timestamp)}
+                        </p>
+                      </div>
+                      
+                      {msg.role === 'user' && (
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
+                          <User className="h-4 w-4 text-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {isLoading && (
+                    <div className="flex gap-3 justify-start">
+                      <div className="flex-shrink-0 mt-1">
+                        <MarketMindsLogo size={28} />
+                      </div>
+                      <div className="bg-muted rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Input Area */}
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ask about this content..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1 px-3 py-2 border rounded-md bg-background"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
                     disabled={!message.trim() || isLoading}
-                    className="rounded-lg px-3"
+                    size="sm"
+                    className="px-3"
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -500,66 +577,36 @@ const ContentDetail = () => {
                   </Button>
                 </div>
               </div>
-            </div>
-
-            {/* Suggested Questions */}
-            {messages.length === 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs rounded-full"
-                  onClick={() => setMessage("Define key terms from this content")}
-                >
-                  Define key terms
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs rounded-full"
-                  onClick={() => setMessage("List three main takeaways")}
-                >
-                  List main takeaways
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs rounded-full"
-                  onClick={() => setMessage("How does this relate to current trends?")}
-                >
-                  Current relevance
-                </Button>
-              </div>
-            )}
+            </Card>
           </div>
+        </div>
 
-          {content.tags && content.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {content.tags.map((tag, index) => (
-                <Badge key={index} variant="outline">
-                  {tag}
-                </Badge>
-              ))}
+        {/* Floating AI Interface */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-card/90 backdrop-blur-sm border rounded-xl p-4 shadow-lg max-w-sm">
+            <div className="flex items-center gap-3 bg-background border rounded-lg p-3">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask AI about this content..."
+                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-sm"
+                disabled={isLoading}
+              />
+              <Button 
+                size="sm"
+                onClick={handleSendMessage} 
+                disabled={!message.trim() || isLoading}
+                className="rounded-lg px-3"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-          )}
-
-          <div className="flex gap-4 mb-6">
-            <Button 
-              onClick={handleVideoOverview}
-              variant="outline" 
-              className="flex items-center gap-2"
-            >
-              <Play className="h-4 w-4" />
-              Video Overview
-            </Button>
-            <Button 
-              onClick={handleAudioOverview}
-              variant="outline" 
-              className="flex items-center gap-2"
-            >
-              <Volume2 className="h-4 w-4" />
-              Audio Overview
-            </Button>
           </div>
         </div>
       </div>
