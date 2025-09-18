@@ -119,10 +119,6 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="max-w-5xl mx-auto text-center">
             
-            <div className="mb-8 inline-flex items-center rounded-full border border-accent/20 bg-accent/10 px-6 py-3 backdrop-blur-sm animate-fade-in-up">
-              <Sparkles className="mr-3 h-5 w-5 text-accent animate-pulse-glow" />
-              <span className="text-sm font-semibold text-accent">Next-Gen Financial Intelligence Platform</span>
-            </div>
             
             <h2 className="mb-8 text-4xl font-bold text-foreground lg:text-6xl animate-fade-in-up leading-tight">
               All Your Financial Research,{" "}
