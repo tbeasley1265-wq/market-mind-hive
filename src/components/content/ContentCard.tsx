@@ -6,8 +6,6 @@ import {
   ExternalLink, 
   Clock, 
   User,
-  TrendingUp,
-  TrendingDown,
   Youtube,
   FileText,
   Twitter,
@@ -23,7 +21,6 @@ interface ContentCardProps {
   timestamp: string;
   summary: string;
   tags: string[];
-  sentiment?: "bullish" | "bearish" | "neutral";
   originalUrl?: string;
   onAskAI?: (title: string, url?: string) => void;
   onSave?: () => void;
@@ -55,7 +52,6 @@ const ContentCard = ({
   timestamp,
   summary,
   tags,
-  sentiment = "neutral",
   originalUrl,
   onAskAI,
   onSave,
@@ -64,27 +60,6 @@ const ContentCard = ({
   const PlatformIcon = platformIcons[platform];
   const platformColor = platformColors[platform];
 
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case "bullish":
-        return "text-success border-success/20 bg-success/10";
-      case "bearish":
-        return "text-destructive border-destructive/20 bg-destructive/10";
-      default:
-        return "text-muted-foreground border-border bg-muted/50";
-    }
-  };
-
-  const getSentimentIcon = (sentiment: string) => {
-    switch (sentiment) {
-      case "bullish":
-        return <TrendingUp className="h-3 w-3" />;
-      case "bearish":
-        return <TrendingDown className="h-3 w-3" />;
-      default:
-        return null;
-    }
-  };
 
   return (
     <Card className="border-card-border shadow-card hover:shadow-elevated transition-all duration-300 group cursor-pointer" onClick={onClick}>
@@ -97,10 +72,6 @@ const ContentCard = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-foreground capitalize">{source}</span>
-                <Badge variant="outline" className={getSentimentColor(sentiment)}>
-                  {getSentimentIcon(sentiment)}
-                  <span className="ml-1 capitalize">{sentiment}</span>
-                </Badge>
               </div>
               <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
                 <User className="h-3 w-3" />

@@ -145,7 +145,7 @@ const Dashboard = () => {
       timestamp: "2 hours ago",
       summary: "Deep dive into the recent Bitcoin ETF approval and its implications for institutional adoption. Raoul discusses the potential for $100B+ inflows and what this means for BTC price action in the coming quarters.",
       tags: ["Bitcoin", "ETF", "Institutional", "Regulation"],
-      sentiment: "bullish" as const,
+      
       originalUrl: "https://youtube.com/watch?v=example",
       isBookmarked: false
     },
@@ -158,7 +158,7 @@ const Dashboard = () => {
       timestamp: "4 hours ago",
       summary: "Analysis of the latest Fed decision and its impact on markets. Key insights on inflation targeting, employment data, and the path forward for monetary policy in 2024.",
       tags: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
-      sentiment: "neutral" as const,
+      
       originalUrl: "https://substack.com/example",
       isBookmarked: false
     },
@@ -171,7 +171,7 @@ const Dashboard = () => {
       timestamp: "6 hours ago",
       summary: "Comprehensive analysis of recent tech earnings with focus on AI companies. Examines valuation multiples, revenue growth sustainability, and potential market corrections.",
       tags: ["AI", "Tech Stocks", "Valuations", "Earnings"],
-      sentiment: "bearish" as const,
+      
       originalUrl: "https://substack.com/example2",
       isBookmarked: false
     }
@@ -188,7 +188,7 @@ const Dashboard = () => {
       timestamp: new Date(item.created_at).toLocaleString(),
       summary: item.summary || '',
       tags: item.metadata?.tags || [],
-      sentiment: item.metadata?.sentiment || 'neutral' as const,
+      
       originalUrl: item.original_url,
       isBookmarked: item.is_bookmarked
     })),
