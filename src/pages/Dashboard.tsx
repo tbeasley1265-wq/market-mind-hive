@@ -223,28 +223,28 @@ const Dashboard = () => {
       label: "Total Content", 
       value: allContent.length.toString(), 
       icon: FileText,
-      change: "+12%",
+      change: "",
       trend: "up"
     },
     { 
       label: "This Week", 
       value: "24", 
       icon: Calendar,
-      change: "+8%",
+      change: "",
       trend: "up"
     },
     { 
       label: "Bookmarked", 
       value: allContent.filter(c => c.isBookmarked).length.toString(), 
       icon: Bookmark,
-      change: "+5%",
+      change: "",
       trend: "up"
     },
     { 
       label: "AI Chats", 
       value: "47", 
       icon: MessageSquare,
-      change: "+23%",
+      change: "",
       trend: "up"
     }
   ];
@@ -317,9 +317,6 @@ const Dashboard = () => {
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                       <p className="text-2xl font-bold">{stat.value}</p>
-                      <p className="text-xs text-green-600 mt-1">
-                        {stat.change} vs last week
-                      </p>
                     </div>
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
                       <IconComponent className="h-6 w-6 text-accent" />
