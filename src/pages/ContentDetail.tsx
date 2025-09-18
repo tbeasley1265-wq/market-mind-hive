@@ -309,37 +309,23 @@ const ContentDetail = () => {
           </div>
         </div>
 
-        {/* Overview Actions Section */}
-        <div className="flex flex-col items-center justify-center py-8 mb-8">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Content Overview</h2>
-            <p className="text-muted-foreground">Get a quick summary in your preferred format</p>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <Button 
-              onClick={handleVideoOverview}
-              size="lg"
-              className="group relative overflow-hidden bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 hover:from-blue-700 hover:via-purple-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-4 rounded-xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              <Play className="h-5 w-5 mr-3 animate-pulse" />
-              <span className="font-semibold">Video Overview</span>
-            </Button>
-            
-            <div className="w-px h-12 bg-border"></div>
-            
-            <Button 
-              onClick={handleAudioOverview}
-              size="lg"
-              variant="outline"
-              className="group relative overflow-hidden border-2 border-accent/30 hover:border-accent bg-background hover:bg-accent/5 transition-all duration-300 px-8 py-4 rounded-xl shadow-md hover:shadow-lg"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              <Volume2 className="h-5 w-5 mr-3 text-accent group-hover:animate-pulse" />
-              <span className="font-semibold text-foreground">Audio Overview</span>
-            </Button>
-          </div>
+        {/* Overview Buttons */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            onClick={handleVideoOverview}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Play className="h-4 w-4" />
+            Video Overview
+          </Button>
+          <Button 
+            onClick={handleAudioOverview}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Volume2 className="h-4 w-4" />
+            Audio Overview
+          </Button>
         </div>
 
         <Card className="border-card-border shadow-card">
