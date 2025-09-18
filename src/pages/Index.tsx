@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import marketMindsIcon from "@/assets/market-minds-organic-icon.png";
+import customLogo from "@/assets/custom-logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -103,7 +103,7 @@ const Index = () => {
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Market Minds Logo - Top Left */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
-        <img src={marketMindsIcon} alt="Market Minds Icon" className="w-8 h-8" />
+        <img src={customLogo} alt="Market Minds Logo" className="w-8 h-8" />
         <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent text-2xl font-bold">
           Market Minds
         </span>
