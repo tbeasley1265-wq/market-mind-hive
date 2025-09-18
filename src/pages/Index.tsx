@@ -100,7 +100,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Floating Background Elements */}
+      {/* Market Minds Logo - Top Left */}
+      <div className="fixed top-4 left-4 z-50">
+        <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent text-2xl font-bold">
+          Market Minds
+        </span>
+      </div>
+
+      {/* Floating Background Elements */} 
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-3xl animate-float opacity-60" />
         <div className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-r from-primary/15 to-accent/15 rounded-full blur-3xl animate-float-delayed opacity-50" />
@@ -111,13 +118,6 @@ const Index = () => {
       <section className="relative pt-20 pb-16 lg:pt-32 lg:pb-24">
         <div className="container mx-auto px-6">
           <div className="max-w-5xl mx-auto text-center">
-            <div className="mb-4 animate-fade-in-up">
-              <h1 className="text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
-                <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Market Minds
-                </span>
-              </h1>
-            </div>
             
             <div className="mb-8 inline-flex items-center rounded-full border border-accent/20 bg-accent/10 px-6 py-3 backdrop-blur-sm animate-fade-in-up">
               <Sparkles className="mr-3 h-5 w-5 text-accent animate-pulse-glow" />
