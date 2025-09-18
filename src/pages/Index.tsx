@@ -317,10 +317,6 @@ const Index = () => {
                 Research Workflow?
               </span>
             </h2>
-            <p className="text-xl lg:text-2xl text-white/80 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Join 500+ analysts, portfolio managers, and researchers who rely on Market Minds 
-              to stay ahead of market trends and make data-driven decisions.
-            </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Button 
                 size="lg" 
