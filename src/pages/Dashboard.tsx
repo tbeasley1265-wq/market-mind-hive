@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  Search, 
   Plus,
   TrendingUp,
   BarChart3,
@@ -41,7 +40,6 @@ interface Message {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showVideoProcessor, setShowVideoProcessor] = useState(false);
@@ -283,11 +281,7 @@ const Dashboard = () => {
   ];
 
   const filteredContent = allContent.filter(content => {
-    const matchesSearch = content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         content.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         content.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    if (activeFilter === "all") return matchesSearch;
+    if (activeFilter === "all") return true;
     
     const filterMap: Record<string, string[]> = {
       crypto: ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"],
@@ -297,10 +291,10 @@ const Dashboard = () => {
     };
     
     if (activeFilter === "bookmarked") {
-      return matchesSearch && content.isBookmarked;
+      return content.isBookmarked;
     }
     
-    return matchesSearch && content.tags.some((tag: string) => 
+    return content.tags.some((tag: string) => 
       filterMap[activeFilter]?.includes(tag)
     );
   });
@@ -366,134 +360,71 @@ const Dashboard = () => {
         <Card className="border-card-border shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <MarketMindsLogo size={24} />
-                <span className="text-sm font-medium text-foreground hidden sm:inline">Market Minds AI</span>
-              </div>
-              
+              <MarketMindsLogo size={20} />
               <div className="flex-1 relative">
                 <Input
-                  placeholder="Ask about your research, market trends, or get insights..."
+                  placeholder="Ask AI anything about your research..."
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="pr-12"
+                  className="pr-10"
                   disabled={isLoading}
                 />
                 <Button
                   size="sm"
                   onClick={handleSendMessage}
                   disabled={!message.trim() || isLoading}
-                  className="absolute right-1 top-1 h-8 w-8 p-0"
+                  className="absolute right-1 top-1 h-7 w-7 p-0"
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3 w-3" />
                   )}
                 </Button>
               </div>
             </div>
             
-            {/* Chat Messages - Collapsible */}
+            {/* Simple Chat Messages */}
             {messages.length > 0 && (
-              <div className="mt-4 border-t pt-4">
-                <ScrollArea className="h-48 pr-4">
-                  <div className="space-y-3">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        {msg.role === 'assistant' && (
-                          <div className="flex-shrink-0 mt-1">
-                            <MarketMindsLogo size={20} />
-                          </div>
-                        )}
-                        
-                        <div className={`max-w-[80%] ${msg.role === 'user' ? 'order-2' : ''}`}>
-                          <div
-                            className={`rounded-lg px-3 py-2 text-sm ${
-                              msg.role === 'user'
-                                ? 'bg-primary text-primary-foreground ml-auto'
-                                : 'bg-muted text-foreground'
-                            }`}
-                          >
-                            {msg.content}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatTime(msg.timestamp)}
-                          </p>
-                        </div>
-                        
-                        {msg.role === 'user' && (
-                          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1 order-1">
-                            <User className="h-3 w-3 text-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {isLoading && (
-                      <div className="flex gap-2 justify-start">
-                        <MarketMindsLogo size={20} />
-                        <div className="bg-muted rounded-lg px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                            <span className="text-sm text-muted-foreground">AI is thinking...</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-                
-                <div className="flex justify-between items-center mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setMessages([])}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Clear chat
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    {messages.length} message{messages.length !== 1 ? 's' : ''}
-                  </p>
+              <div className="mt-3 pt-3 border-t max-h-32 overflow-y-auto">
+                <div className="space-y-2">
+                  {messages.slice(-2).map((msg) => (
+                    <div key={msg.id} className="text-sm">
+                      <span className={msg.role === 'user' ? 'font-medium' : 'text-muted-foreground'}>
+                        {msg.role === 'user' ? 'You: ' : 'AI: '}
+                      </span>
+                      <span>{msg.content}</span>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="text-sm text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+                      AI is responding...
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Search and Filters */}
-        <div className="space-y-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search research, authors, or topics..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {filters.map((filter) => (
-              <Button
-                key={filter.key}
-                variant={activeFilter === filter.key ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveFilter(filter.key)}
-                className="whitespace-nowrap"
-              >
-                {filter.label}
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  {filter.count}
-                </Badge>
-              </Button>
-            ))}
-          </div>
+        {/* Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          {filters.map((filter) => (
+            <Button
+              key={filter.key}
+              variant={activeFilter === filter.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveFilter(filter.key)}
+              className="whitespace-nowrap"
+            >
+              {filter.label}
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {filter.count}
+              </Badge>
+            </Button>
+          ))}
         </div>
 
         {/* Content Grid */}
@@ -501,19 +432,11 @@ const Dashboard = () => {
           {filteredContent.length === 0 ? (
             <Card className="p-12 text-center">
               <div className="text-muted-foreground">
-                {searchQuery ? (
-                  <>
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">No results found</p>
-                    <p>Try adjusting your search terms or filters</p>
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">No content yet</p>
-                    <p>Upload documents, connect email, or add sources to get started</p>
-                  </>
-                )}
+                <>
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">No content yet</p>
+                  <p>Upload documents, connect email, or add sources to get started</p>
+                </>
               </div>
             </Card>
           ) : (
