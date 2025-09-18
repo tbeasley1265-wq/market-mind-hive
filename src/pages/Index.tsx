@@ -305,51 +305,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-16 lg:py-24">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16 animate-fade-in-up">
-            <h2 className="text-3xl lg:text-5xl font-bold text-foreground mb-6">
-              Trusted by Financial Professionals
-            </h2>
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
-              See what industry leaders are saying about Market Minds
-            </p>
-          </div>
-          
-          <div className="grid lg:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card 
-                key={testimonial.name} 
-                className="border-card-border/50 shadow-card hover:shadow-elevated transition-all duration-500 hover:-translate-y-1 animate-fade-in-up"
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-warning text-warning" />
-                    ))}
-                  </div>
-                  <blockquote className="text-foreground leading-relaxed mb-6 italic">
-                    "{testimonial.content}"
-                  </blockquote>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-accent flex items-center justify-center font-bold text-white">
-                      {testimonial.avatar}
-                    </div>
-                    <div>
-                      <div className="font-bold text-foreground">{testimonial.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {testimonial.role}, {testimonial.company}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 lg:py-32 bg-gradient-hero relative overflow-hidden">
