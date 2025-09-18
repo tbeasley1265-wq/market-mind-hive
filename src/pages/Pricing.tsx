@@ -9,7 +9,7 @@ const Pricing = () => {
   const plans = [
     {
       name: "Starter",
-      price: "$49",
+      price: "$20",
       period: "/month",
       description: "Perfect for individual analysts and small teams",
       icon: Star,
