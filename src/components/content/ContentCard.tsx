@@ -5,7 +5,7 @@ import {
   ExternalLink, 
   Clock, 
   User,
-  Youtube,
+  Play,
   FileText,
   MessageCircle,
   Mail
@@ -25,7 +25,7 @@ interface ContentCardProps {
 }
 
 const platformIcons = {
-  youtube: Youtube,
+  youtube: Play,
   substack: FileText,
   twitter: MessageCircle,
   email: Mail,
@@ -52,8 +52,16 @@ const ContentCard = ({
   originalUrl,
   onClick
 }: ContentCardProps) => {
-  const PlatformIcon = platformIcons[platform];
-  const platformColor = platformColors[platform];
+  // Ensure platform is valid
+  const validPlatform = platform || 'substack';
+  const PlatformIcon = platformIcons[validPlatform] || FileText;
+  const platformColor = platformColors[validPlatform] || "bg-gray-500";
+
+  // Additional safety check
+  if (!PlatformIcon) {
+    console.error('PlatformIcon is undefined for platform:', validPlatform);
+    return <div>Error loading content card</div>;
+  }
 
 
   return (

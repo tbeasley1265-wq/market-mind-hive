@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { 
-  Youtube, 
+  Play, 
   MessageCircle, 
   Mail, 
   FileText, 
@@ -177,7 +177,7 @@ const Sources = () => {
 
   const getSourceIcon = (type: string) => {
     switch (type) {
-      case 'youtube': return Youtube;
+      case 'youtube': return Play;
       case 'twitter': return MessageCircle;
       case 'substack': return FileText;
       case 'reddit': return FileText;
@@ -214,7 +214,7 @@ const Sources = () => {
               People
             </TabsTrigger>
             <TabsTrigger value="youtube" className="flex items-center gap-2">
-              <Youtube className="h-4 w-4" />
+              <Play className="h-4 w-4" />
               YouTube
             </TabsTrigger>
             <TabsTrigger value="twitter" className="flex items-center gap-2">
@@ -314,7 +314,7 @@ const Sources = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Youtube className="h-5 w-5 text-red-500" />
+                  <Play className="h-5 w-5 text-red-500" />
                   YouTube Channels
                 </CardTitle>
                 <div className="text-sm text-muted-foreground">
@@ -340,7 +340,7 @@ const Sources = () => {
                     {mockSources.youtube.connected.map((source) => (
                       <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Youtube className="h-5 w-5 text-red-500" />
+                          <Play className="h-5 w-5 text-red-500" />
                           <div>
                             <div className="font-medium">{source.name}</div>
                             <div className="text-sm text-muted-foreground">
@@ -394,7 +394,7 @@ const Sources = () => {
                         <Label htmlFor={source.id} className="flex-1 cursor-pointer">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <Youtube className="h-5 w-5 text-red-500" />
+                              <Play className="h-5 w-5 text-red-500" />
                               <div>
                                 <div className="font-medium">{source.name}</div>
                                 <div className="text-sm text-muted-foreground">

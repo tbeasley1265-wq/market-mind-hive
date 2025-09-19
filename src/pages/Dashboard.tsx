@@ -349,7 +349,7 @@ const Dashboard = () => {
       id: item.id,
       title: item.title,
       source: item.platform,
-      platform: item.content_type as 'youtube' | 'substack' | 'email',
+      platform: item.content_type as 'youtube' | 'substack' | 'email' | 'twitter' | 'reddit',
       author: item.author || 'Unknown',
       timestamp: new Date(item.created_at).toLocaleString(),
       summary: item.summary || '',
