@@ -89,6 +89,7 @@ export type Database = {
           author: string | null
           content_type: string
           created_at: string
+          folder_id: string | null
           full_content: string | null
           id: string
           is_bookmarked: boolean | null
@@ -105,6 +106,7 @@ export type Database = {
           author?: string | null
           content_type: string
           created_at?: string
+          folder_id?: string | null
           full_content?: string | null
           id?: string
           is_bookmarked?: boolean | null
@@ -121,6 +123,7 @@ export type Database = {
           author?: string | null
           content_type?: string
           created_at?: string
+          folder_id?: string | null
           full_content?: string | null
           id?: string
           is_bookmarked?: boolean | null
@@ -134,6 +137,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "content_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "content_items_source_id_fkey"
             columns: ["source_id"]
@@ -174,6 +184,36 @@ export type Database = {
           source_name?: string
           source_type?: string
           source_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
           updated_at?: string
           user_id?: string
         }

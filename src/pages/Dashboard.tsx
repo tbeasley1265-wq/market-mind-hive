@@ -3,54 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   Plus,
   TrendingUp,
-  BarChart3,
-  FileText,
-  Mail,
-  MessageSquare,
-  Filter,
   Upload,
-  Play,
-  Send,
-  Loader2,
-  User
+  FolderPlus,
+  Filter,
+  Grid3X3,
+  List,
+  MoreVertical,
+  MoveIcon
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
 import EmailIntegrationModal from "@/components/email/EmailIntegrationModal";
 import VideoProcessor from "@/components/content/VideoProcessor";
 import UploadSourcesModal from "@/components/content/UploadSourcesModal";
+import { FolderModal } from "@/components/content/FolderModal";
+import { FolderSidebar } from "@/components/content/FolderSidebar";
 import Header from "@/components/layout/Header";
-import MarketMindsLogo from "@/components/ui/MarketMindsLogo";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import { useFolders } from "@/hooks/useFolders";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState("all");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showVideoProcessor, setShowVideoProcessor] = useState(false);
   const [showDocumentUpload, setShowDocumentUpload] = useState(false);
   const [showUploadSourcesModal, setShowUploadSourcesModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<any>(null);
   const [contentItems, setContentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
+  const { folders, createFolder, updateFolder, deleteFolder, moveContentToFolder } = useFolders();
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -67,7 +61,7 @@ const Dashboard = () => {
       try {
         const { data, error } = await supabase
           .from('content_items')
-          .select('*')
+          .select('*, folders(name, color)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -87,89 +81,43 @@ const Dashboard = () => {
     navigate(`/content/${contentId}`);
   };
 
-  const handleAskAI = async (query: string): Promise<string> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please log in to use AI chat');
+  const handleCreateFolder = () => {
+    setEditingFolder(null);
+    setShowFolderModal(true);
+  };
+
+  const handleEditFolder = (folder: any) => {
+    setEditingFolder(folder);
+    setShowFolderModal(true);
+  };
+
+  const handleSaveFolder = async (name: string, color: string) => {
+    if (editingFolder) {
+      await updateFolder(editingFolder.id, { name, color });
+    } else {
+      await createFolder(name, color);
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (window.confirm('Are you sure you want to delete this folder? Content inside will be moved to "All Content".')) {
+      await deleteFolder(folderId);
+      if (selectedFolderId === folderId) {
+        setSelectedFolderId(null);
       }
-
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          message: query,
-          context: 'dashboard', // General dashboard context
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) {
-        console.error('AI chat error:', error);
-        throw new Error(error.message || 'Failed to get AI response');
-      }
-
-      return data.message || 'Sorry, I couldn\'t process your request right now.';
-    } catch (error) {
-      console.error('Error calling AI:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get AI response';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      throw new Error(errorMessage);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+  const handleMoveToFolder = async (contentId: string, folderId: string | null) => {
+    await moveContentToFolder(contentId, folderId);
+    // Refresh content items to reflect the change
+    const { data } = await supabase
+      .from('content_items')
+      .select('*, folders(name, color)')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
     
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: message.trim(),
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setMessage("");
-    setIsLoading(true);
-    
-    try {
-      const response = await handleAskAI(userMessage.content);
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I apologize, but I encountered an error. Please try again.",
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setContentItems(data || []);
   };
 
   const handleSave = async (title: string, content: any) => {
@@ -354,14 +302,26 @@ const Dashboard = () => {
       timestamp: new Date(item.created_at).toLocaleString(),
       summary: item.summary || '',
       tags: item.metadata?.tags || [],
-      
       originalUrl: item.original_url,
-      isBookmarked: item.is_bookmarked
+      isBookmarked: item.is_bookmarked,
+      folderId: item.folder_id,
+      folderName: item.folders?.name,
+      folderColor: item.folders?.color
     })),
-    ...mockContent
+    ...mockContent.map(item => ({
+      ...item,
+      folderId: null,
+      folderName: null,
+      folderColor: null
+    }))
   ];
 
-  const filteredContent = allContent.filter(content => {
+  // Filter by folder first, then by content type
+  const folderFilteredContent = selectedFolderId 
+    ? allContent.filter(content => content.folderId === selectedFolderId)
+    : allContent;
+
+  const filteredContent = folderFilteredContent.filter(content => {
     if (activeFilter === "all") return true;
     
     const filterMap: Record<string, string[]> = {
@@ -380,12 +340,20 @@ const Dashboard = () => {
     );
   });
 
+  // Create folder items with content counts
+  const folderItems = folders.map(folder => ({
+    id: folder.id,
+    name: folder.name,
+    color: folder.color,
+    itemCount: allContent.filter(item => item.folderId === folder.id).length
+  }));
+
   const filters = [
-    { key: "all", label: "All Content", count: allContent.length },
-    { key: "crypto", label: "Crypto", count: allContent.filter(c => c.tags.some((t: string) => ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"].includes(t))).length },
-    { key: "macro", label: "Macro", count: allContent.filter(c => c.tags.some((t: string) => ["Fed", "Interest Rates", "Monetary Policy", "Inflation"].includes(t))).length },
-    { key: "tech", label: "Tech", count: allContent.filter(c => c.tags.some((t: string) => ["AI", "Tech Stocks", "Valuations", "Earnings"].includes(t))).length },
-    { key: "bookmarked", label: "Saved", count: allContent.filter(c => c.isBookmarked).length }
+    { key: "all", label: "All Content", count: folderFilteredContent.length },
+    { key: "crypto", label: "Crypto", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"].includes(t))).length },
+    { key: "macro", label: "Macro", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["Fed", "Interest Rates", "Monetary Policy", "Inflation"].includes(t))).length },
+    { key: "tech", label: "Tech", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["AI", "Tech Stocks", "Valuations", "Earnings"].includes(t))).length },
+    { key: "bookmarked", label: "Saved", count: folderFilteredContent.filter(c => c.isBookmarked).length }
   ];
 
   if (loading) {
@@ -415,135 +383,169 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-6 py-8 space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Research Hub</h1>
-            <p className="text-muted-foreground">
-              Your curated financial intelligence dashboard
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowUploadSourcesModal(true)}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate('/sources')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Sources
-            </Button>
-          </div>
-        </div>
-
-        {/* AI Chat Bar */}
-        <Card className="border-card-border shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <MarketMindsLogo size={20} />
-              <div className="flex-1 relative">
-                <Input
-                  placeholder="Ask AI anything about your research..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="pr-10"
-                  disabled={isLoading}
-                />
-                <Button
-                  size="sm"
-                  onClick={handleSendMessage}
-                  disabled={!message.trim() || isLoading}
-                  className="absolute right-1 top-1 h-7 w-7 p-0"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Send className="h-3 w-3" />
-                  )}
-                </Button>
-              </div>
+      <div className="flex">
+        {/* Folder Sidebar */}
+        <FolderSidebar
+          folders={folderItems}
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={setSelectedFolderId}
+          onCreateFolder={handleCreateFolder}
+          onEditFolder={handleEditFolder}
+          onDeleteFolder={handleDeleteFolder}
+        />
+        
+        {/* Main Content */}
+        <main className="flex-1 px-6 py-8 space-y-8">
+          {/* Header Section */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {selectedFolderId 
+                  ? folderItems.find(f => f.id === selectedFolderId)?.name || 'Folder' 
+                  : 'Research Hub'
+                }
+              </h1>
+              <p className="text-muted-foreground">
+                {selectedFolderId 
+                  ? `Organize and manage your research content`
+                  : 'Your curated financial intelligence dashboard'
+                }
+              </p>
             </div>
             
-            {/* Simple Chat Messages */}
-            {messages.length > 0 && (
-              <div className="mt-3 pt-3 border-t max-h-32 overflow-y-auto">
-                <div className="space-y-2">
-                  {messages.slice(-2).map((msg) => (
-                    <div key={msg.id} className="text-sm">
-                      <span className={msg.role === 'user' ? 'font-medium' : 'text-muted-foreground'}>
-                        {msg.role === 'user' ? 'You: ' : 'AI: '}
-                      </span>
-                      <span>{msg.content}</span>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="text-sm text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
-                      AI is responding...
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleCreateFolder}
+              >
+                <FolderPlus className="h-4 w-4 mr-2" />
+                New Folder
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowUploadSourcesModal(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/sources')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Sources
+              </Button>
+            </div>
+          </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {filters.map((filter) => (
-            <Button
-              key={filter.key}
-              variant={activeFilter === filter.key ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveFilter(filter.key)}
-              className="whitespace-nowrap"
-            >
-              {filter.label}
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {filter.count}
-              </Badge>
-            </Button>
-          ))}
-        </div>
-
-        {/* Content Grid */}
-        <div className="space-y-6">
-          {filteredContent.length === 0 ? (
-            <Card className="p-12 text-center">
-              <div className="text-muted-foreground">
-                <>
-                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No content yet</p>
-                  <p>Upload documents, connect email, or add sources to get started</p>
-                </>
-              </div>
-            </Card>
-          ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {filteredContent.map((content, index) => (
-                <ContentCard 
-                  key={content.id || index} 
-                  id={content.id}
-                  {...content} 
-                  onClick={() => content.id && handleContentClick(content.id)}
-                />
+          {/* Filters and View Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+              {filters.map((filter) => (
+                <Button
+                  key={filter.key}
+                  variant={activeFilter === filter.key ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveFilter(filter.key)}
+                  className="whitespace-nowrap"
+                >
+                  {filter.label}
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {filter.count}
+                  </Badge>
+                </Button>
               ))}
             </div>
-          )}
-        </div>
-      </main>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Content Grid */}
+          <div className="space-y-6">
+            {filteredContent.length === 0 ? (
+              <Card className="p-12 text-center">
+                <div className="text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg mb-2">
+                    {selectedFolderId ? 'No content in this folder' : 'No content yet'}
+                  </p>
+                  <p>
+                    {selectedFolderId 
+                      ? 'Drag content here or use the move button to organize your research'
+                      : 'Upload documents, connect email, or add sources to get started'
+                    }
+                  </p>
+                </div>
+              </Card>
+            ) : (
+              <div className={viewMode === 'grid' ? 'grid gap-6 lg:grid-cols-2' : 'space-y-4'}>
+                {filteredContent.map((content, index) => (
+                  <div key={content.id || index} className="group relative">
+                    <ContentCard 
+                      id={content.id}
+                      {...content} 
+                      onClick={() => content.id && handleContentClick(content.id)}
+                    />
+                    
+                    {/* Move to Folder Button */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="secondary" className="h-7 w-7 p-0">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => content.id && handleMoveToFolder(content.id, null)}>
+                            <MoveIcon className="h-4 w-4 mr-2" />
+                            Move to All Content
+                          </DropdownMenuItem>
+                          {folders.map((folder) => (
+                            <DropdownMenuItem 
+                              key={folder.id}
+                              onClick={() => content.id && handleMoveToFolder(content.id, folder.id)}
+                            >
+                              <MoveIcon className="h-4 w-4 mr-2" />
+                              Move to {folder.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* Modals */}
+      <FolderModal
+        isOpen={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        onSave={handleSaveFolder}
+        folder={editingFolder}
+      />
+      
       <UploadSourcesModal
         isOpen={showUploadSourcesModal}
         onClose={() => setShowUploadSourcesModal(false)}

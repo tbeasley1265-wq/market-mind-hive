@@ -166,7 +166,8 @@ const ContentDetail = () => {
               source: mockItem.source
             },
             source_id: null,
-            updated_at: mockItem.created_at
+            updated_at: mockItem.created_at,
+            folder_id: null
           };
           setContent(enrichedContent);
         } else {
