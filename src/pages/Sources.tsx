@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { 
   Youtube, 
   Twitter, 
@@ -13,13 +15,18 @@ import {
   Plus, 
   Settings,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  Search,
+  Users,
+  CheckCircle2
 } from "lucide-react";
 import VideoProcessor from "@/components/content/VideoProcessor";
 import EmailIntegration from "@/components/email/EmailIntegration";
 
 const Sources = () => {
   const [activeTab, setActiveTab] = useState('youtube');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
 
   // Mock connected sources
   const mockSources = {
@@ -40,6 +47,61 @@ const Sources = () => {
       { name: "r/Bitcoin", url: "/r/Bitcoin", members: "4.8M", active: true },
       { name: "r/WallStreetBets", url: "/r/WallStreetBets", members: "15M", active: false },
     ]
+  };
+
+  // Influencers list from onboarding (subset for demo)
+  const influencers = [
+    // Crypto & Bitcoin
+    { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
+    { id: "anthony-pompliano", name: "Anthony Pompliano", platform: "YouTube", followers: "1.8M", category: "Crypto" },
+    { id: "michael-saylor", name: "Michael Saylor", platform: "Twitter", followers: "3.1M", category: "Bitcoin" },
+    { id: "balaji-srinivasan", name: "Balaji Srinivasan", platform: "Twitter", followers: "920K", category: "Tech" },
+    { id: "coin-bureau", name: "Coin Bureau (Guy)", platform: "YouTube", followers: "2.1M", category: "Crypto" },
+    { id: "benjamin-cowen", name: "Benjamin Cowen", platform: "YouTube", followers: "1.8M", category: "Crypto" },
+    
+    // Traditional Finance & Macro
+    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
+    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
+    { id: "ray-dalio", name: "Ray Dalio", platform: "LinkedIn", followers: "3.2M", category: "Macro" },
+    { id: "howard-marks", name: "Howard Marks", platform: "Oaktree Capital", followers: "890K", category: "Investing" },
+    { id: "warren-buffett", name: "Warren Buffett", platform: "Berkshire Hathaway", followers: "4.2M", category: "Investing" },
+    { id: "bill-ackman", name: "Bill Ackman", platform: "Twitter", followers: "1.2M", category: "Investing" },
+    
+    // Tech & Innovation
+    { id: "elon-musk", name: "Elon Musk", platform: "Twitter", followers: "150M", category: "Tech" },
+    { id: "sam-altman", name: "Sam Altman", platform: "OpenAI", followers: "2.1M", category: "AI" },
+    { id: "jensen-huang", name: "Jensen Huang", platform: "NVIDIA", followers: "680K", category: "AI" },
+    { id: "lex-fridman", name: "Lex Fridman", platform: "MIT/Podcast", followers: "2.8M", category: "AI" },
+    
+    // Venture Capital
+    { id: "marc-andreessen", name: "Marc Andreessen", platform: "a16z", followers: "1.8M", category: "VC" },
+    { id: "naval-ravikant", name: "Naval Ravikant", platform: "AngelList", followers: "2.1M", category: "VC" },
+    { id: "chamath-palihapitiya", name: "Chamath Palihapitiya", platform: "Social Capital", followers: "1.6M", category: "VC" },
+    { id: "peter-thiel", name: "Peter Thiel", platform: "Founders Fund", followers: "1.1M", category: "VC" },
+    
+    // Economics & Policy
+    { id: "paul-krugman", name: "Paul Krugman", platform: "New York Times", followers: "5.2M", category: "Economics" },
+    { id: "janet-yellen", name: "Janet Yellen", platform: "US Treasury", followers: "1.8M", category: "Policy" },
+    { id: "jerome-powell", name: "Jerome Powell", platform: "Federal Reserve", followers: "2.1M", category: "Policy" },
+    
+    // Fintech
+    { id: "brian-armstrong", name: "Brian Armstrong", platform: "Coinbase", followers: "1.8M", category: "Fintech" },
+    { id: "jack-dorsey", name: "Jack Dorsey", platform: "Block (Square)", followers: "5.8M", category: "Fintech" },
+    { id: "patrick-collison", name: "Patrick Collison", platform: "Stripe", followers: "680K", category: "Fintech" },
+  ];
+
+  const filteredInfluencers = influencers.filter(influencer => 
+    influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    influencer.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    influencer.platform.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleInfluencerToggle = (influencerId: string) => {
+    setSelectedInfluencers(prev => 
+      prev.includes(influencerId)
+        ? prev.filter(id => id !== influencerId)
+        : [...prev, influencerId]
+    );
   };
 
   const getSourceIcon = (type: string) => {
@@ -125,7 +187,11 @@ const Sources = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="people" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              People
+            </TabsTrigger>
             <TabsTrigger value="youtube" className="flex items-center gap-2">
               <Youtube className="h-4 w-4" />
               YouTube
@@ -151,6 +217,77 @@ const Sources = () => {
               Process
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="people" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Add Influencers & Experts
+                </CardTitle>
+                <div className="text-sm text-muted-foreground">
+                  Browse and add influential voices you might have missed during onboarding
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, category, or platform..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Selected Count */}
+                {selectedInfluencers.length > 0 && (
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">
+                      {selectedInfluencers.length} influencer{selectedInfluencers.length !== 1 ? 's' : ''} selected
+                    </span>
+                    <Button size="sm">
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Add Selected
+                    </Button>
+                  </div>
+                )}
+
+                {/* Influencers Grid */}
+                <div className="grid gap-4 max-h-96 overflow-y-auto">
+                  {filteredInfluencers.map((influencer) => (
+                    <div key={influencer.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
+                      <Checkbox
+                        id={influencer.id}
+                        checked={selectedInfluencers.includes(influencer.id)}
+                        onCheckedChange={() => handleInfluencerToggle(influencer.id)}
+                      />
+                      <Label htmlFor={influencer.id} className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{influencer.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {influencer.platform} • {influencer.followers} followers
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="ml-2">
+                            {influencer.category}
+                          </Badge>
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+
+                {filteredInfluencers.length === 0 && searchTerm && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No influencers found matching "{searchTerm}"
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="youtube" className="space-y-6">
             {renderSourceList(mockSources.youtube, 'youtube')}

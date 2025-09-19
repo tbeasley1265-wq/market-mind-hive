@@ -429,10 +429,10 @@ const Dashboard = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowUploadSourcesModal(true)}
+              onClick={() => navigate('/sources')}
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Sources
+              <Plus className="h-4 w-4 mr-2" />
+              Add Sources
             </Button>
           </div>
         </div>
