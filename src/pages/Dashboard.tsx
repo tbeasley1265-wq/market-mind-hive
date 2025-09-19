@@ -432,7 +432,7 @@ const Dashboard = () => {
               onClick={() => setShowUploadSourcesModal(true)}
             >
               <Upload className="h-4 w-4 mr-2" />
-              Upload Sources
+              Upload
             </Button>
             <Button 
               variant="outline" 
