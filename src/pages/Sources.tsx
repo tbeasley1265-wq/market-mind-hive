@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { 
   Youtube, 
-  Twitter, 
+  MessageCircle, 
   Mail, 
   FileText, 
   Plus, 
@@ -178,7 +178,7 @@ const Sources = () => {
   const getSourceIcon = (type: string) => {
     switch (type) {
       case 'youtube': return Youtube;
-      case 'twitter': return Twitter;
+      case 'twitter': return MessageCircle;
       case 'substack': return FileText;
       case 'reddit': return FileText;
       default: return FileText;
@@ -218,7 +218,7 @@ const Sources = () => {
               YouTube
             </TabsTrigger>
             <TabsTrigger value="twitter" className="flex items-center gap-2">
-              <Twitter className="h-4 w-4" />
+              <MessageCircle className="h-4 w-4" />
               Twitter
             </TabsTrigger>
             <TabsTrigger value="email" className="flex items-center gap-2">
@@ -419,7 +419,7 @@ const Sources = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Twitter className="h-5 w-5 text-blue-500" />
+                  <MessageCircle className="h-5 w-5 text-blue-500" />
                   Twitter Accounts
                 </CardTitle>
                 <div className="text-sm text-muted-foreground">
@@ -445,7 +445,7 @@ const Sources = () => {
                     {mockSources.twitter.connected.map((source) => (
                       <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Twitter className="h-5 w-5 text-blue-500" />
+                          <MessageCircle className="h-5 w-5 text-blue-500" />
                           <div>
                             <div className="font-medium">{source.name}</div>
                             <div className="text-sm text-muted-foreground">
@@ -499,7 +499,7 @@ const Sources = () => {
                         <Label htmlFor={source.id} className="flex-1 cursor-pointer">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <Twitter className="h-5 w-5 text-blue-500" />
+                              <MessageCircle className="h-5 w-5 text-blue-500" />
                               <div>
                                 <div className="font-medium">{source.name}</div>
                                 <div className="text-sm text-muted-foreground">

@@ -7,7 +7,7 @@ import {
   User,
   Youtube,
   FileText,
-  Twitter,
+  MessageCircle,
   Mail
 } from "lucide-react";
 
@@ -27,7 +27,7 @@ interface ContentCardProps {
 const platformIcons = {
   youtube: Youtube,
   substack: FileText,
-  twitter: Twitter,
+  twitter: MessageCircle,
   email: Mail,
   reddit: FileText,
 };
