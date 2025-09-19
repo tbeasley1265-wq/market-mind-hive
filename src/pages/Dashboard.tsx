@@ -14,7 +14,7 @@ import {
   Grid3X3,
   List,
   MoreVertical,
-  MoveIcon
+  Move
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
@@ -515,7 +515,7 @@ const Dashboard = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => content.id && handleMoveToFolder(content.id, null)}>
-                            <MoveIcon className="h-4 w-4 mr-2" />
+                            <Move className="h-4 w-4 mr-2" />
                             Move to All Content
                           </DropdownMenuItem>
                           {folders.map((folder) => (
@@ -523,7 +523,7 @@ const Dashboard = () => {
                               key={folder.id}
                               onClick={() => content.id && handleMoveToFolder(content.id, folder.id)}
                             >
-                              <MoveIcon className="h-4 w-4 mr-2" />
+                              <Move className="h-4 w-4 mr-2" />
                               Move to {folder.name}
                             </DropdownMenuItem>
                           ))}
