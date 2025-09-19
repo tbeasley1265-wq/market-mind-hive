@@ -51,6 +51,7 @@ const ContentDetail = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isAILoading, setIsAILoading] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const handleAskAI = async (question: string) => {
     if (!question.trim() || !content) return;
@@ -265,156 +266,162 @@ const ContentDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            
+    <div className="min-h-screen bg-background">
+      {/* Simple Header */}
+      <div className="px-8 py-6 border-b border-border/40">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        
+        <div className="max-w-4xl">
+          <h1 className="text-2xl font-semibold text-foreground mb-3 leading-tight">
+            {content.title}
+          </h1>
+          
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <PlatformIcon className="h-4 w-4" />
+              <span>{content.source || content.platform}</span>
+            </div>
+            <span>•</span>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>{content.author || "Unknown Author"}</span>
+            </div>
+            <span>•</span>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>{formatDate(content.created_at)}</span>
+            </div>
             {content.original_url && (
-              <Button variant="ghost" size="sm" asChild>
-                <a href={content.original_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-                  <ExternalLink className="h-4 w-4" />
-                  View Original
+              <>
+                <span>•</span>
+                <a 
+                  href={content.original_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Source
                 </a>
-              </Button>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-3 mt-4">
+            {content.sentiment && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getSentimentColor(content.sentiment)}`}>
+                {getSentimentIcon(content.sentiment)}
+                <span className="capitalize">{content.sentiment}</span>
+              </div>
+            )}
+            
+            {content.tags && content.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {content.tags.slice(0, 4).map((tag, index) => (
+                  <span key={index} className="px-2 py-1 bg-muted text-muted-foreground rounded-full text-xs">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Article Header */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <PlatformIcon className="h-4 w-4" />
-                <span className="font-medium">{content.source || content.platform}</span>
-                <span>•</span>
-                <User className="h-4 w-4" />
-                <span>{content.author || "Unknown Author"}</span>
-                <span>•</span>
-                <Clock className="h-4 w-4" />
-                <span>{formatDate(content.created_at)}</span>
-              </div>
+      {/* Main Content Area */}
+      <div className="max-w-4xl mx-auto px-8 py-8">
+        {/* Summary */}
+        <div className="mb-8">
+          <h2 className="text-lg font-medium text-foreground mb-4">Summary</h2>
+          <div className="text-muted-foreground leading-relaxed">
+            {content.summary}
+          </div>
+        </div>
 
-              <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-                {content.title}
-              </h1>
+        {/* Full Content */}
+        <div className="mb-8">
+          <h2 className="text-lg font-medium text-foreground mb-4">Content</h2>
+          <div className="prose prose-neutral dark:prose-invert max-w-none">
+            <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed">
+              {content.full_content}
+            </div>
+          </div>
+        </div>
 
-              <div className="flex items-center gap-3">
-                {content.sentiment && (
-                  <Badge className={`${getSentimentColor(content.sentiment)} border-0 text-xs font-medium`}>
-                    {getSentimentIcon(content.sentiment)}
-                    <span className="ml-1 capitalize">{content.sentiment}</span>
-                  </Badge>
+        {/* AI Chat Messages */}
+        {chatMessages.length > 0 && (
+          <div className="space-y-6 mb-8">
+            <h2 className="text-lg font-medium text-foreground">AI Insights</h2>
+            {chatMessages.map((message, index) => (
+              <div key={message.id} className="space-y-4">
+                {message.role === 'user' && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-1">
+                      <span className="text-xs text-primary-foreground font-medium">Q</span>
+                    </div>
+                    <div className="text-foreground font-medium">
+                      {message.content}
+                    </div>
+                  </div>
                 )}
-                
-                {content.tags && content.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {content.tags.slice(0, 4).map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs bg-gray-100 text-gray-700 border-0">
-                        {tag}
-                      </Badge>
-                    ))}
+                {message.role === 'assistant' && (
+                  <div className="flex items-start gap-3">
+                    <Bot className="h-5 w-5 text-blue-600 flex-shrink-0 mt-1" />
+                    <div className="text-muted-foreground leading-relaxed">
+                      {message.content}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Summary */}
-            <div className="bg-blue-50 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Summary</h2>
-              <p className="text-gray-700 leading-relaxed">{content.summary}</p>
-            </div>
-
-            {/* Full Content */}
-            <div className="prose prose-gray max-w-none">
-              <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                {content.full_content}
-              </div>
-            </div>
-          </div>
-
-          {/* AI Chat Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 bg-gray-50 rounded-lg p-6 h-[600px] flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <Bot className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Ask AI about this content</h3>
-              </div>
-
-              <ScrollArea className="flex-1 mb-4">
-                <div className="space-y-4">
-                  {chatMessages.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
-                      <Bot className="h-8 w-8 mx-auto mb-3 text-gray-400" />
-                      <p className="text-sm">Ask questions about this content and I'll help explain key concepts, implications, or provide additional insights.</p>
-                    </div>
-                  ) : (
-                    chatMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                            message.role === 'user'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-800 shadow-sm'
-                          }`}
-                        >
-                          {message.content}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  
-                  {isAILoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white rounded-lg p-3 shadow-sm">
-                        <div className="flex items-center gap-2 text-gray-500">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">AI is thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            ))}
+            {isAILoading && (
+              <div className="flex items-start gap-3">
+                <Bot className="h-5 w-5 text-blue-600 flex-shrink-0 mt-1" />
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Analyzing content...</span>
                 </div>
-              </ScrollArea>
-
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ask a question..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isAILoading}
-                  className="flex-1 border-gray-200"
-                />
-                <Button
-                  onClick={() => handleAskAI(chatInput)}
-                  disabled={!chatInput.trim() || isAILoading}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Chat Input - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/40 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Input
+                placeholder="Ask AI about this content..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isAILoading}
+                className="pr-12 border-border/60 focus:border-primary/50 bg-background"
+              />
+              <Button
+                onClick={() => handleAskAI(chatInput)}
+                disabled={!chatInput.trim() || isAILoading}
+                size="sm"
+                className="absolute right-1 top-1 h-8 w-8 p-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Bottom padding to account for fixed chat input */}
+      <div className="h-20"></div>
     </div>
   );
 };
