@@ -43,6 +43,20 @@ const Onboarding = () => {
     { id: "fintech", label: "FinTech", icon: Zap, description: "Digital banking, payments, lending" },
     { id: "ai", label: "Artificial Intelligence", icon: Brain, description: "AI companies, automation, tech trends" },
     { id: "vc", label: "Venture Capital", icon: Users, description: "Startups, funding rounds, innovation" },
+    { id: "personal-finance", label: "Personal Finance", icon: TrendingUp, description: "Budgeting, investing, retirement planning" },
+    { id: "blockchain", label: "Blockchain Technology", icon: Bitcoin, description: "Distributed ledgers, smart contracts, Web3" },
+    { id: "quantitative", label: "Quantitative Trading", icon: TrendingUp, description: "Algorithmic trading, quant strategies, data analysis" },
+    { id: "esg", label: "ESG & Sustainable Investing", icon: Brain, description: "Environmental, social, governance investing" },
+    { id: "derivatives", label: "Options & Derivatives", icon: Briefcase, description: "Options, futures, risk management" },
+    { id: "forex", label: "Forex & Currencies", icon: TrendingUp, description: "Currency trading, exchange rates, monetary policy" },
+    { id: "commodities", label: "Commodities & Energy", icon: Zap, description: "Oil, gold, agriculture, renewable energy" },
+    { id: "real-estate", label: "Real Estate Investment", icon: Briefcase, description: "REITs, property investment, commercial real estate" },
+    { id: "alternatives", label: "Alternative Investments", icon: Users, description: "Private equity, hedge funds, art, collectibles" },
+    { id: "psychology", label: "Market Psychology", icon: Brain, description: "Behavioral finance, sentiment analysis, trading psychology" },
+    { id: "regulatory", label: "Regulatory & Compliance", icon: Briefcase, description: "SEC regulations, compliance, legal frameworks" },
+    { id: "defi", label: "DeFi & Web3", icon: Bitcoin, description: "Decentralized finance, yield farming, liquidity mining" },
+    { id: "nfts", label: "NFTs & Digital Assets", icon: Zap, description: "Non-fungible tokens, digital art, metaverse" },
+    { id: "cbdc", label: "Central Bank Digital Currencies", icon: TrendingUp, description: "Digital dollars, monetary innovation, CBDCs" },
   ];
 
   const influencers = [
@@ -295,15 +309,20 @@ const Onboarding = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search for influencers, categories, or platforms..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search for influencers, categories, or platforms..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button variant="outline" size="default">
+                  <Search className="h-4 w-4" />
+                </Button>
               </div>
               
               {/* Results count */}
