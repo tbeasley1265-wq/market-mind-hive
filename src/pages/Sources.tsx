@@ -24,7 +24,7 @@ import VideoProcessor from "@/components/content/VideoProcessor";
 import EmailIntegration from "@/components/email/EmailIntegration";
 
 const Sources = () => {
-  const [activeTab, setActiveTab] = useState('youtube');
+  const [activeTab, setActiveTab] = useState('people');
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
   const [selectedYoutube, setSelectedYoutube] = useState<string[]>([]);
