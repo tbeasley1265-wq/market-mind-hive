@@ -57,6 +57,21 @@ const Onboarding = () => {
     { id: "defi", label: "DeFi & Web3", icon: Bitcoin, description: "Decentralized finance, yield farming, liquidity mining" },
     { id: "nfts", label: "NFTs & Digital Assets", icon: Zap, description: "Non-fungible tokens, digital art, metaverse" },
     { id: "cbdc", label: "Central Bank Digital Currencies", icon: TrendingUp, description: "Digital dollars, monetary innovation, CBDCs" },
+    { id: "fixed-income", label: "Fixed Income & Bonds", icon: Briefcase, description: "Treasury bonds, corporate bonds, yield analysis, credit spreads" },
+    { id: "dividend-investing", label: "Dividend Investing", icon: TrendingUp, description: "Dividend aristocrats, REIT dividends, income strategies" },
+    { id: "value-investing", label: "Value Investing", icon: Brain, description: "Undervalued stocks, fundamental analysis, Buffett-style investing" },
+    { id: "growth-investing", label: "Growth Investing", icon: Zap, description: "High-growth companies, momentum stocks, disruptive innovation" },
+    { id: "technical-analysis", label: "Technical Analysis", icon: TrendingUp, description: "Chart patterns, indicators, trading signals, price action" },
+    { id: "ipos-spacs", label: "IPOs & SPACs", icon: Users, description: "Initial public offerings, SPAC mergers, new listings" },
+    { id: "ma-activity", label: "Mergers & Acquisitions", icon: Briefcase, description: "Corporate deals, takeovers, consolidation trends" },
+    { id: "small-mid-cap", label: "Small & Mid-Cap Stocks", icon: TrendingUp, description: "Emerging companies, growth potential, Russell 2000" },
+    { id: "international", label: "International Markets", icon: Brain, description: "Global investing, emerging markets, currency hedging" },
+    { id: "sector-rotation", label: "Sector Analysis", icon: Zap, description: "Technology, healthcare, financials, energy sectors" },
+    { id: "risk-management", label: "Risk Management", icon: Briefcase, description: "Portfolio hedging, volatility control, position sizing" },
+    { id: "wealth-management", label: "Wealth Management", icon: Users, description: "Financial planning, tax strategies, estate planning" },
+    { id: "credit-markets", label: "Credit Markets", icon: TrendingUp, description: "Corporate credit, high-yield bonds, distressed debt" },
+    { id: "emerging-markets", label: "Emerging Markets", icon: Brain, description: "Developing economies, frontier markets, growth opportunities" },
+    { id: "biotech-healthcare", label: "Biotech & Healthcare", icon: Zap, description: "Pharmaceutical companies, medical devices, clinical trials" },
   ];
 
   const influencers = [
