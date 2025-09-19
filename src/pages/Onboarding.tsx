@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -16,7 +17,8 @@ import {
   Brain,
   Bell,
   Users,
-  CheckCircle2
+  CheckCircle2,
+  Search
 } from "lucide-react";
 
 const Onboarding = () => {
@@ -24,6 +26,7 @@ const Onboarding = () => {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
   const [summaryLength, setSummaryLength] = useState<string>("standard");
+  const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
@@ -43,15 +46,150 @@ const Onboarding = () => {
   ];
 
   const influencers = [
+    // Crypto & Bitcoin
     { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
     { id: "anthony-pompliano", name: "Anthony Pompliano", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
     { id: "michael-saylor", name: "Michael Saylor", platform: "Twitter", followers: "3.1M", category: "Bitcoin" },
     { id: "balaji-srinivasan", name: "Balaji Srinivasan", platform: "Twitter", followers: "920K", category: "Tech" },
-    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
-    { id: "preston-pysh", name: "Preston Pysh", platform: "The Investor's Podcast", followers: "680K", category: "Investing" },
     { id: "ryan-sean-adams", name: "Ryan Sean Adams", platform: "Bankless", followers: "750K", category: "DeFi" },
+    { id: "coin-bureau", name: "Coin Bureau (Guy)", platform: "YouTube", followers: "2.1M", category: "Crypto" },
+    { id: "benjamin-cowen", name: "Benjamin Cowen", platform: "YouTube", followers: "1.8M", category: "Crypto" },
+    { id: "lark-davis", name: "Lark Davis", platform: "YouTube", followers: "520K", category: "Crypto" },
+    { id: "altcoin-daily", name: "Altcoin Daily", platform: "YouTube", followers: "1.3M", category: "Crypto" },
+    { id: "ivan-on-tech", name: "Ivan on Tech", platform: "YouTube", followers: "620K", category: "Crypto" },
+    { id: "andreas-antonopoulos", name: "Andreas Antonopoulos", platform: "YouTube", followers: "380K", category: "Bitcoin" },
+    { id: "robert-breedlove", name: "Robert Breedlove", platform: "Podcast", followers: "340K", category: "Bitcoin" },
+    { id: "preston-pysh", name: "Preston Pysh", platform: "The Investor's Podcast", followers: "680K", category: "Investing" },
+    { id: "nic-carter", name: "Nic Carter", platform: "Twitter", followers: "480K", category: "Bitcoin" },
+    { id: "plan-b", name: "PlanB", platform: "Twitter", followers: "1.8M", category: "Bitcoin" },
+    { id: "willy-woo", name: "Willy Woo", platform: "Twitter", followers: "1.1M", category: "Bitcoin" },
+    { id: "vijay-boyapati", name: "Vijay Boyapati", platform: "Twitter", followers: "280K", category: "Bitcoin" },
+    { id: "jeff-booth", name: "Jeff Booth", platform: "Twitter", followers: "520K", category: "Bitcoin" },
+    { id: "saifedean-ammous", name: "Saifedean Ammous", platform: "Twitter", followers: "340K", category: "Bitcoin" },
+    { id: "parker-lewis", name: "Parker Lewis", platform: "Twitter", followers: "180K", category: "Bitcoin" },
+    
+    // Traditional Finance & Macro
+    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
+    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
+    { id: "ray-dalio", name: "Ray Dalio", platform: "LinkedIn", followers: "3.2M", category: "Macro" },
+    { id: "howard-marks", name: "Howard Marks", platform: "Oaktree Capital", followers: "890K", category: "Investing" },
+    { id: "warren-buffett", name: "Warren Buffett", platform: "Berkshire Hathaway", followers: "4.2M", category: "Investing" },
+    { id: "charlie-munger", name: "Charlie Munger", platform: "Berkshire Hathaway", followers: "1.8M", category: "Investing" },
+    { id: "bill-ackman", name: "Bill Ackman", platform: "Twitter", followers: "1.2M", category: "Investing" },
+    { id: "carl-icahn", name: "Carl Icahn", platform: "Twitter", followers: "280K", category: "Investing" },
+    { id: "david-einhorn", name: "David Einhorn", platform: "Greenlight Capital", followers: "180K", category: "Investing" },
+    { id: "stanley-druckenmiller", name: "Stanley Druckenmiller", platform: "Duquesne Family Office", followers: "340K", category: "Macro" },
+    { id: "paul-tudor-jones", name: "Paul Tudor Jones", platform: "Tudor Investment", followers: "220K", category: "Macro" },
+    { id: "jim-rogers", name: "Jim Rogers", platform: "Rogers Holdings", followers: "450K", category: "Commodities" },
+    { id: "marc-faber", name: "Marc Faber", platform: "Gloom Boom Doom Report", followers: "180K", category: "Macro" },
+    { id: "nouriel-roubini", name: "Nouriel Roubini", platform: "Twitter", followers: "680K", category: "Economics" },
+    { id: "peter-schiff", name: "Peter Schiff", platform: "SchiffGold", followers: "890K", category: "Gold" },
+    { id: "jim-cramer", name: "Jim Cramer", platform: "CNBC", followers: "1.9M", category: "Stocks" },
+    { id: "cathie-duddy", name: "Cathie Duddy", platform: "ARK Invest", followers: "420K", category: "Innovation" },
+    { id: "tom-lee", name: "Tom Lee", platform: "Fundstrat", followers: "380K", category: "Stocks" },
+    { id: "kathy-lien", name: "Kathy Lien", platform: "BK Asset Management", followers: "290K", category: "Forex" },
+    
+    // Tech & Innovation
+    { id: "elon-musk", name: "Elon Musk", platform: "Twitter", followers: "150M", category: "Tech" },
+    { id: "tim-cook", name: "Tim Cook", platform: "Apple", followers: "13M", category: "Tech" },
+    { id: "satya-nadella", name: "Satya Nadella", platform: "Microsoft", followers: "2.8M", category: "Tech" },
+    { id: "sundar-pichai", name: "Sundar Pichai", platform: "Google", followers: "5.2M", category: "Tech" },
+    { id: "mark-zuckerberg", name: "Mark Zuckerberg", platform: "Meta", followers: "120M", category: "Tech" },
+    { id: "jensen-huang", name: "Jensen Huang", platform: "NVIDIA", followers: "680K", category: "AI" },
+    { id: "sam-altman", name: "Sam Altman", platform: "OpenAI", followers: "2.1M", category: "AI" },
+    { id: "demis-hassabis", name: "Demis Hassabis", platform: "DeepMind", followers: "420K", category: "AI" },
+    { id: "yann-lecun", name: "Yann LeCun", platform: "Meta AI", followers: "680K", category: "AI" },
+    { id: "andrew-ng", name: "Andrew Ng", platform: "Stanford/Coursera", followers: "890K", category: "AI" },
+    { id: "geoffrey-hinton", name: "Geoffrey Hinton", platform: "Google", followers: "340K", category: "AI" },
+    { id: "fei-fei-li", name: "Fei-Fei Li", platform: "Stanford HAI", followers: "280K", category: "AI" },
+    { id: "ilya-sutskever", name: "Ilya Sutskever", platform: "OpenAI", followers: "520K", category: "AI" },
+    { id: "lex-fridman", name: "Lex Fridman", platform: "MIT/Podcast", followers: "2.8M", category: "AI" },
+    { id: "garry-kasparov", name: "Garry Kasparov", platform: "Twitter", followers: "680K", category: "AI" },
+    
+    // Venture Capital & Startups
+    { id: "marc-andreessen", name: "Marc Andreessen", platform: "a16z", followers: "1.8M", category: "VC" },
+    { id: "ben-horowitz", name: "Ben Horowitz", platform: "a16z", followers: "920K", category: "VC" },
+    { id: "reid-hoffman", name: "Reid Hoffman", platform: "Greylock Partners", followers: "3.2M", category: "VC" },
+    { id: "peter-thiel", name: "Peter Thiel", platform: "Founders Fund", followers: "1.1M", category: "VC" },
+    { id: "keith-rabois", name: "Keith Rabois", platform: "Founders Fund", followers: "450K", category: "VC" },
+    { id: "chamath-palihapitiya", name: "Chamath Palihapitiya", platform: "Social Capital", followers: "1.6M", category: "VC" },
+    { id: "naval-ravikant", name: "Naval Ravikant", platform: "AngelList", followers: "2.1M", category: "VC" },
+    { id: "jason-calacanis", name: "Jason Calacanis", platform: "Launch", followers: "680K", category: "VC" },
+    { id: "tim-draper", name: "Tim Draper", platform: "Draper Fisher Jurvetson", followers: "380K", category: "VC" },
+    { id: "kevin-rose", name: "Kevin Rose", platform: "True Ventures", followers: "1.2M", category: "VC" },
+    { id: "chris-sacca", name: "Chris Sacca", platform: "Lowercase Capital", followers: "890K", category: "VC" },
+    { id: "dave-mcclure", name: "Dave McClure", platform: "500 Startups", followers: "520K", category: "VC" },
+    { id: "brad-feld", name: "Brad Feld", platform: "Foundry Group", followers: "340K", category: "VC" },
+    { id: "fred-wilson", name: "Fred Wilson", platform: "Union Square Ventures", followers: "680K", category: "VC" },
+    
+    // Economics & Policy
+    { id: "paul-krugman", name: "Paul Krugman", platform: "New York Times", followers: "5.2M", category: "Economics" },
+    { id: "janet-yellen", name: "Janet Yellen", platform: "US Treasury", followers: "1.8M", category: "Policy" },
+    { id: "jerome-powell", name: "Jerome Powell", platform: "Federal Reserve", followers: "2.1M", category: "Policy" },
+    { id: "christine-lagarde", name: "Christine Lagarde", platform: "ECB", followers: "1.2M", category: "Policy" },
+    { id: "mark-carney", name: "Mark Carney", platform: "Bank of England", followers: "450K", category: "Policy" },
+    { id: "larry-summers", name: "Larry Summers", platform: "Harvard", followers: "890K", category: "Economics" },
+    { id: "joseph-stiglitz", name: "Joseph Stiglitz", platform: "Columbia", followers: "680K", category: "Economics" },
+    { id: "thomas-piketty", name: "Thomas Piketty", platform: "Paris School of Economics", followers: "420K", category: "Economics" },
+    { id: "ken-rogoff", name: "Ken Rogoff", platform: "Harvard", followers: "280K", category: "Economics" },
+    { id: "carmen-reinhart", name: "Carmen Reinhart", platform: "Harvard", followers: "180K", category: "Economics" },
+    
+    // Financial Media & Analysts
+    { id: "maria-bartiromo", name: "Maria Bartiromo", platform: "Fox Business", followers: "2.8M", category: "Media" },
+    { id: "becky-quick", name: "Becky Quick", platform: "CNBC", followers: "1.2M", category: "Media" },
+    { id: "andrew-ross-sorkin", name: "Andrew Ross Sorkin", platform: "CNBC", followers: "890K", category: "Media" },
+    { id: "joe-kernen", name: "Joe Kernen", platform: "CNBC", followers: "520K", category: "Media" },
+    { id: "carl-quintanilla", name: "Carl Quintanilla", platform: "CNBC", followers: "380K", category: "Media" },
+    { id: "scott-wapner", name: "Scott Wapner", platform: "CNBC", followers: "290K", category: "Media" },
+    { id: "melissa-lee", name: "Melissa Lee", platform: "CNBC", followers: "420K", category: "Media" },
+    { id: "katie-stockton", name: "Katie Stockton", platform: "Fairlead Strategies", followers: "180K", category: "Technical Analysis" },
+    { id: "tom-demark", name: "Tom DeMark", platform: "DeMark Analytics", followers: "120K", category: "Technical Analysis" },
+    { id: "larry-williams", name: "Larry Williams", platform: "Trading", followers: "340K", category: "Trading" },
+    
+    // Alternative Assets & Real Estate
+    { id: "robert-kiyosaki", name: "Robert Kiyosaki", platform: "Rich Dad", followers: "3.8M", category: "Real Estate" },
+    { id: "grant-cardone", name: "Grant Cardone", platform: "Cardone Capital", followers: "2.1M", category: "Real Estate" },
+    { id: "barbara-corcoran", name: "Barbara Corcoran", platform: "Shark Tank", followers: "1.8M", category: "Real Estate" },
+    { id: "ryan-serhant", name: "Ryan Serhant", platform: "SERHANT", followers: "920K", category: "Real Estate" },
+    { id: "biggerpockets", name: "BiggerPockets", platform: "Real Estate Network", followers: "1.2M", category: "Real Estate" },
+    { id: "david-greene", name: "David Greene", platform: "BiggerPockets", followers: "680K", category: "Real Estate" },
+    
+    // Commodities & Energy
+    { id: "daniel-yergin", name: "Daniel Yergin", platform: "IHS Markit", followers: "280K", category: "Energy" },
+    { id: "helima-croft", name: "Helima Croft", platform: "RBC Capital", followers: "180K", category: "Energy" },
+    { id: "jeff-currie", name: "Jeff Currie", platform: "Goldman Sachs", followers: "220K", category: "Commodities" },
+    { id: "francisco-blanch", name: "Francisco Blanch", platform: "Bank of America", followers: "150K", category: "Commodities" },
+    
+    // International Markets
+    { id: "ray-dalio-china", name: "Ray Dalio (China Focus)", platform: "Bridgewater", followers: "890K", category: "China" },
+    { id: "jim-oneill", name: "Jim O'Neill", platform: "Chatham House", followers: "340K", category: "Global Markets" },
+    { id: "mark-mobius", name: "Mark Mobius", platform: "Mobius Capital", followers: "420K", category: "Emerging Markets" },
+    { id: "ruchir-sharma", name: "Ruchir Sharma", platform: "Rockefeller International", followers: "280K", category: "Emerging Markets" },
+    
+    // Fintech & Digital Banking
+    { id: "brian-armstrong", name: "Brian Armstrong", platform: "Coinbase", followers: "1.8M", category: "Fintech" },
+    { id: "changpeng-zhao", name: "Changpeng Zhao (CZ)", platform: "Binance", followers: "8.2M", category: "Crypto" },
+    { id: "jack-dorsey", name: "Jack Dorsey", platform: "Block (Square)", followers: "5.8M", category: "Fintech" },
+    { id: "patrick-collison", name: "Patrick Collison", platform: "Stripe", followers: "680K", category: "Fintech" },
+    { id: "john-collison", name: "John Collison", platform: "Stripe", followers: "420K", category: "Fintech" },
+    { id: "vlad-tenev", name: "Vlad Tenev", platform: "Robinhood", followers: "280K", category: "Fintech" },
+    { id: "baiju-bhatt", name: "Baiju Bhatt", platform: "Robinhood", followers: "180K", category: "Fintech" },
+    { id: "max-levchin", name: "Max Levchin", platform: "Affirm", followers: "340K", category: "Fintech" },
+    { id: "david-velez", name: "David Vélez", platform: "Nubank", followers: "520K", category: "Fintech" },
+    
+    // Trading & Technical Analysis
+    { id: "peter-brandt", name: "Peter Brandt", platform: "Twitter", followers: "680K", category: "Trading" },
+    { id: "linda-raschke", name: "Linda Raschke", platform: "LBRGroup", followers: "280K", category: "Trading" },
+    { id: "john-bollinger", name: "John Bollinger", platform: "Bollinger Bands", followers: "420K", category: "Technical Analysis" },
+    { id: "ralph-elliott", name: "Ralph Elliott", platform: "Elliott Wave", followers: "180K", category: "Technical Analysis" },
+    { id: "steve-nison", name: "Steve Nison", platform: "Candlestick Charting", followers: "220K", category: "Technical Analysis" }
   ];
+
+  const filteredInfluencers = influencers.filter(influencer =>
+    influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    influencer.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    influencer.platform.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleInterestToggle = (interestId: string) => {
     setSelectedInterests(prev => 
@@ -156,8 +294,25 @@ const Onboarding = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                {influencers.map((influencer) => {
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Search for influencers, categories, or platforms..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              {/* Results count */}
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredInfluencers.length} of {influencers.length} influencers
+              </p>
+              
+              <div className="grid md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                {filteredInfluencers.map((influencer) => {
                   const isSelected = selectedInfluencers.includes(influencer.id);
                   
                   return (
