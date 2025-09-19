@@ -72,6 +72,7 @@ const Onboarding = () => {
     { id: "credit-markets", label: "Credit Markets", icon: TrendingUp, description: "Corporate credit, high-yield bonds, distressed debt" },
     { id: "emerging-markets", label: "Emerging Markets", icon: Brain, description: "Developing economies, frontier markets, growth opportunities" },
     { id: "biotech-healthcare", label: "Biotech & Healthcare", icon: Zap, description: "Pharmaceutical companies, medical devices, clinical trials" },
+    { id: "tax-strategy", label: "Tax Strategy & Planning", icon: Briefcase, description: "Tax-efficient investing, capital gains, retirement accounts" },
   ];
 
   const influencers = [
