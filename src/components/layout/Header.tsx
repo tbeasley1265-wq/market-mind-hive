@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import marketMindsLogo from "@/assets/market-minds-logo.png";
 import { Button } from "@/components/ui/button";
 import { 
   NavigationMenu,
@@ -21,9 +22,7 @@ const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-lg bg-gradient-accent flex items-center justify-center">
-              <Brain className="h-5 w-5 text-white" />
-            </div>
+            <img src={marketMindsLogo} alt="Market Minds Logo" className="w-8 h-8" />
             <span className="text-xl font-bold text-foreground">Market Minds</span>
             <Badge variant="secondary" className="ml-2">Beta</Badge>
           </Link>
