@@ -20,7 +20,6 @@ import {
   Users,
   CheckCircle2
 } from "lucide-react";
-import VideoProcessor from "@/components/content/VideoProcessor";
 import EmailIntegration from "@/components/email/EmailIntegration";
 
 const Sources = () => {
@@ -208,7 +207,7 @@ const Sources = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="people" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               People
@@ -232,10 +231,6 @@ const Sources = () => {
             <TabsTrigger value="reddit" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Reddit
-            </TabsTrigger>
-            <TabsTrigger value="processor" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Process
             </TabsTrigger>
           </TabsList>
 
@@ -745,42 +740,6 @@ const Sources = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="processor" className="space-y-6">
-            <div className="grid gap-6">
-              <VideoProcessor />
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Private Platform Access</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Connect to private research platforms like Real Vision, The Defiant Pro, etc. 
-                    Your credentials are encrypted and stored securely.
-                  </p>
-                  
-                  <div className="grid gap-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">Real Vision</h4>
-                        <p className="text-sm text-muted-foreground">Premium financial research</p>
-                      </div>
-                      <Button variant="outline">Connect</Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">The Defiant Pro</h4>
-                        <p className="text-sm text-muted-foreground">DeFi and crypto analysis</p>
-                      </div>
-                      <Button variant="outline">Connect</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
         </Tabs>
       </div>
