@@ -241,30 +241,6 @@ const Dashboard = () => {
       originalUrl: "https://substack.com/bonds",
       isBookmarked: false
     },
-    {
-      id: "mock-7",
-      title: "Tesla's FSD Beta Performance Analysis",
-      source: "Autonomous World",
-      platform: "youtube" as const,
-      author: "Tech Reviewer Pro",
-      timestamp: "1 day ago",
-      summary: "Comprehensive testing of Tesla's latest FSD beta version across various scenarios. Data-driven analysis of improvements, limitations, and competitive positioning against Waymo.",
-      tags: ["Tesla", "AI", "Autonomous", "Tech Stocks"],
-      originalUrl: "https://youtube.com/tesla-fsd",
-      isBookmarked: true
-    },
-    {
-      id: "mock-8",
-      title: "European Energy Crisis: Investment Opportunities in Renewables",
-      source: "Energy Transition Weekly",
-      platform: "email" as const,
-      author: "Elena Rodriguez",
-      timestamp: "2 days ago",
-      summary: "Deep dive into European energy markets and the accelerated transition to renewables. Identifies key investment themes and companies positioned to benefit from policy changes.",
-      tags: ["Energy", "Renewables", "Europe", "ESG"],
-      originalUrl: "https://example.com/energy",
-      isBookmarked: false
-    },
   ];
 
   // Combine content items and mock content
