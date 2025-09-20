@@ -107,7 +107,7 @@ const ContentCard = ({
           </div>
           
           <div className="flex items-center space-x-1">
-            {id && onMoveToFolder && (
+            {id && onMoveToFolder && !id.startsWith('mock-') && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -119,26 +119,29 @@ const ContentCard = ({
                     <FolderPlus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    onMoveToFolder(id, null);
-                  }}>
-                    <Move className="h-4 w-4 mr-2" />
-                    Move to All Content
-                  </DropdownMenuItem>
-                  {folders.map((folder) => (
-                    <DropdownMenuItem 
-                      key={folder.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMoveToFolder(id, folder.id);
-                      }}
-                    >
-                      <Move className="h-4 w-4 mr-2" />
-                      Move to {folder.name}
-                    </DropdownMenuItem>
-                  ))}
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-48 bg-popover border border-border shadow-lg z-50"
+                >
+                  {folders.length > 0 ? (
+                    folders.map((folder) => (
+                      <DropdownMenuItem 
+                        key={folder.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToFolder(id, folder.id);
+                        }}
+                        className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <Move className="h-4 w-4 mr-2" />
+                        Move to {folder.name}
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No folders available. Create a folder first.
+                    </div>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
