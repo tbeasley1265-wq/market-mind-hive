@@ -397,7 +397,7 @@ const ContentDetail = () => {
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={isAILoading}
-                className="pr-12 border-border/60 focus:border-primary/50 bg-background"
+                className="pr-12 border-border/60 focus:border-primary/50 bg-background h-12"
               />
               <Button
                 onClick={() => handleAskAI(chatInput)}
