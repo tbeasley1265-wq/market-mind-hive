@@ -25,10 +25,24 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const autoResizeTextarea = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    autoResizeTextarea();
   };
 
   useEffect(() => {
@@ -63,6 +77,14 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+
+    // Reset textarea height after clearing input
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.style.height = 'auto';
+      }
+    }, 0);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-chat', {
@@ -171,21 +193,21 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
 
           <div className="mt-4">
             <div className="max-w-3xl mx-auto px-4">
-              <div className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
                 <Textarea
+                  ref={textareaRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything about the content or financial markets..."
-                  className="flex-1 min-h-[40px] max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-2"
+                  className="flex-1 min-h-[48px] max-h-48 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 overflow-hidden"
                   disabled={isLoading}
-                  rows={1}
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={!input.trim() || isLoading}
                   size="sm"
-                  className="rounded-full h-10 w-10 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
+                  className="rounded-full h-10 w-10 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 mt-1"
                   variant="ghost"
                 >
                   {isLoading ? (
