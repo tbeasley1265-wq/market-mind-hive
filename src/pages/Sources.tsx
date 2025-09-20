@@ -207,7 +207,7 @@ const Sources = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="people" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               People
@@ -219,10 +219,6 @@ const Sources = () => {
             <TabsTrigger value="twitter" className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4" />
               Twitter
-            </TabsTrigger>
-            <TabsTrigger value="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Email
             </TabsTrigger>
             <TabsTrigger value="substack" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -515,22 +511,6 @@ const Sources = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="email" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-green-500" />
-                  Email Integration
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Connect your email to automatically process newsletters and financial content
-                </div>
-              </CardHeader>
-              <CardContent>
-                <EmailIntegration />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="substack" className="space-y-6">
             <Card>
