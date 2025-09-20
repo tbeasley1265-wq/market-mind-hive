@@ -442,39 +442,15 @@ const Dashboard = () => {
             ) : (
               <div className={viewMode === 'grid' ? 'grid gap-6 lg:grid-cols-2' : 'space-y-4'}>
                 {filteredContent.map((content, index) => (
-                  <div key={content.id || index} className="group relative">
-                    <ContentCard 
-                      id={content.id}
-                      {...content} 
-                      onClick={() => content.id && handleContentClick(content.id)}
-                    />
-                    
-                    {/* Move to Folder Button */}
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="secondary" className="h-7 w-7 p-0">
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => content.id && handleMoveToFolder(content.id, null)}>
-                            <Move className="h-4 w-4 mr-2" />
-                            Move to All Content
-                          </DropdownMenuItem>
-                          {folders.map((folder) => (
-                            <DropdownMenuItem 
-                              key={folder.id}
-                              onClick={() => content.id && handleMoveToFolder(content.id, folder.id)}
-                            >
-                              <Move className="h-4 w-4 mr-2" />
-                              Move to {folder.name}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
+                  <ContentCard 
+                    key={content.id || index}
+                    id={content.id}
+                    {...content} 
+                    onClick={() => content.id && handleContentClick(content.id)}
+                    folders={folders}
+                    onMoveToFolder={handleMoveToFolder}
+                    folderName={content.folderName}
+                  />
                 ))}
               </div>
             )}

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   ExternalLink, 
   Clock, 
@@ -8,8 +9,16 @@ import {
   Play,
   FileText,
   MessageCircle,
-  Mail
+  Mail,
+  FolderPlus,
+  Move
 } from "lucide-react";
+
+interface Folder {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface ContentCardProps {
   id?: string;
@@ -22,6 +31,9 @@ interface ContentCardProps {
   tags: string[];
   originalUrl?: string;
   onClick?: () => void;
+  folders?: Folder[];
+  onMoveToFolder?: (contentId: string, folderId: string | null) => void;
+  folderName?: string;
 }
 
 const platformIcons = {
@@ -50,7 +62,10 @@ const ContentCard = ({
   summary,
   tags,
   originalUrl,
-  onClick
+  onClick,
+  folders = [],
+  onMoveToFolder,
+  folderName
 }: ContentCardProps) => {
   // Ensure platform is valid
   const validPlatform = platform || 'substack';
@@ -75,6 +90,11 @@ const ContentCard = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-foreground capitalize">{source}</span>
+                {folderName && (
+                  <Badge variant="outline" className="text-xs">
+                    {folderName}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
                 <User className="h-3 w-3" />
@@ -85,18 +105,58 @@ const ContentCard = ({
               </div>
             </div>
           </div>
-          {originalUrl && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              asChild
-              onClick={(e) => e.stopPropagation()}
-            >
-              <a href={originalUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-          )}
+          
+          <div className="flex items-center space-x-1">
+            {id && onMoveToFolder && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveToFolder(id, null);
+                  }}>
+                    <Move className="h-4 w-4 mr-2" />
+                    Move to All Content
+                  </DropdownMenuItem>
+                  {folders.map((folder) => (
+                    <DropdownMenuItem 
+                      key={folder.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveToFolder(id, folder.id);
+                      }}
+                    >
+                      <Move className="h-4 w-4 mr-2" />
+                      Move to {folder.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            
+            {originalUrl && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0"
+                asChild
+                onClick={(e) => e.stopPropagation()}
+              >
+                <a href={originalUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
         
         <CardTitle className="text-lg leading-tight group-hover:text-accent transition-colors duration-200">
