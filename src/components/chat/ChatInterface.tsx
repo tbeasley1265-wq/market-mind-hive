@@ -170,27 +170,31 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
           </ScrollArea>
 
           <div className="mt-4">
-            <div className="flex gap-2 p-3 bg-background border-2 rounded-full shadow-md max-w-2xl mx-auto">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about the content or financial markets..."
-                className="min-h-[40px] max-h-24 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 rounded-full px-2"
-                disabled={isLoading}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!input.trim() || isLoading}
-                size="sm"
-                className="rounded-full h-10 w-10 p-0 shrink-0"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+            <div className="max-w-3xl mx-auto px-4">
+              <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask me anything about the content or financial markets..."
+                  className="flex-1 min-h-[24px] max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  disabled={isLoading}
+                  rows={1}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!input.trim() || isLoading}
+                  size="sm"
+                  className="rounded-full h-8 w-8 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
+                  variant="ghost"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
