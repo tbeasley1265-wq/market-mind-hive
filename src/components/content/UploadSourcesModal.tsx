@@ -92,16 +92,7 @@ const UploadSourcesModal = ({
           </div>
 
           {/* Source Options Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button
-              variant="outline"
-              className="h-16 flex-col gap-2 hover:bg-accent/5 hover:border-accent/30"
-              onClick={handleEmailClick}
-            >
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm">Email</span>
-            </Button>
-            
+          <div className="grid grid-cols-2 gap-4">
             <Button
               variant="outline"
               className="h-16 flex-col gap-2 hover:bg-accent/5 hover:border-accent/30"
@@ -116,22 +107,6 @@ const UploadSourcesModal = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               <span className="text-sm">Link</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="h-16 flex-col gap-2 hover:bg-accent/5 hover:border-accent/30"
-              onClick={() => {
-                toast({
-                  title: "Coming Soon",
-                  description: "Website scraping integration is in development.",
-                });
-              }}
-            >
-              <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
-              </svg>
-              <span className="text-sm">Website</span>
             </Button>
             
             <Button
