@@ -107,7 +107,7 @@ const ContentCard = ({
           </div>
           
           <div className="flex items-center space-x-1">
-            {id && onMoveToFolder && !id.startsWith('mock-') && (
+            {id && onMoveToFolder && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -121,17 +121,43 @@ const ContentCard = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="end" 
-                  className="w-48 bg-popover border border-border shadow-lg z-50"
+                  className="w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-lg z-[9999]"
+                  style={{ 
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)'
+                  }}
                 >
+                  {folderName && (
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (id?.startsWith('mock-')) {
+                          alert('This is sample content and cannot be moved to folders.');
+                          return;
+                        }
+                        if (window.confirm(`Remove this content from "${folderName}" folder?`)) {
+                          onMoveToFolder(id, null);
+                        }
+                      }}
+                      className="hover:bg-blue-50 hover:text-blue-600 cursor-pointer text-red-600 hover:text-red-700"
+                    >
+                      <Move className="h-4 w-4 mr-2" />
+                      Remove from {folderName}
+                    </DropdownMenuItem>
+                  )}
                   {folders.length > 0 ? (
                     folders.map((folder) => (
                       <DropdownMenuItem 
                         key={folder.id}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (id?.startsWith('mock-')) {
+                            alert('This is sample content and cannot be moved to folders.');
+                            return;
+                          }
                           onMoveToFolder(id, folder.id);
                         }}
-                        className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        className="hover:bg-blue-50 hover:text-blue-600 cursor-pointer"
                       >
                         <Move className="h-4 w-4 mr-2" />
                         Move to {folder.name}
