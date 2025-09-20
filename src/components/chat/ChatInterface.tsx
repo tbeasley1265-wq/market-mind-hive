@@ -89,6 +89,11 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     setInput('');
     setIsLoading(true);
 
+    // Scroll to bottom of page after sending message
+    setTimeout(() => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }, 100);
+
     setTimeout(() => {
       const textarea = textareaRef.current;
       if (textarea) textarea.style.height = 'auto';
