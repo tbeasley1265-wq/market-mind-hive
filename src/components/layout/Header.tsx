@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import marketMindsLogo from "@/assets/market-minds-logo.png";
 import { Button } from "@/components/ui/button";
 import { 
@@ -10,11 +10,39 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Menu, X, TrendingUp, FileText, MessageSquare, Bell } from "lucide-react";
+import { Brain, Menu, X, TrendingUp, FileText, MessageSquare, Bell, User, Settings, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const getUserDisplayName = () => {
+    if (user?.email) {
+      return user.email.split('@')[0];
+    }
+    return "User";
+  };
+
+  const getUserInitials = () => {
+    const name = getUserDisplayName();
+    return name.charAt(0).toUpperCase();
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-card-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -100,8 +128,37 @@ const Header = () => {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Button variant="ghost">Sign In</Button>
-            <Button variant="hero">Get Started</Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2 h-10 px-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarFallback className="text-sm font-medium">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-background border border-card-border shadow-lg">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Manage Account</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="ghost">Sign In</Button>
+                <Button variant="hero">Get Started</Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -134,8 +191,32 @@ const Header = () => {
               </a>
               <div className="pt-4 pb-2 border-t border-card-border mt-4">
                 <div className="flex flex-col space-y-2">
-                  <Button variant="ghost" className="justify-start">Sign In</Button>
-                  <Button variant="hero" className="justify-start">Get Started</Button>
+                  {user ? (
+                    <>
+                      <div className="flex items-center space-x-3 px-3 py-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.user_metadata?.avatar_url} />
+                          <AvatarFallback className="text-sm font-medium">
+                            {getUserInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium text-foreground">{getUserDisplayName()}</span>
+                      </div>
+                      <Button variant="ghost" className="justify-start">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Manage Account
+                      </Button>
+                      <Button variant="ghost" className="justify-start" onClick={handleSignOut}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Log Out
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" className="justify-start">Sign In</Button>
+                      <Button variant="hero" className="justify-start">Get Started</Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
