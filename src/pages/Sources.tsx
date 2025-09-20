@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Header from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,84 +9,32 @@ import { Label } from "@/components/ui/label";
 import { 
   Play, 
   MessageCircle, 
-  Mail, 
+  Mic,
   FileText, 
-  Plus, 
-  Settings,
-  Trash2,
-  ExternalLink,
+  Mail,
   Search,
   Users,
+  Edit,
+  Trash2,
   CheckCircle2
 } from "lucide-react";
-import EmailIntegration from "@/components/email/EmailIntegration";
+import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 
 const Sources = () => {
-  const [activeTab, setActiveTab] = useState('people');
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
-  const [selectedYoutube, setSelectedYoutube] = useState<string[]>([]);
-  const [selectedTwitter, setSelectedTwitter] = useState<string[]>([]);
-  const [selectedSubstack, setSelectedSubstack] = useState<string[]>([]);
-  const [selectedReddit, setSelectedReddit] = useState<string[]>([]);
+  const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
+  
+  const {
+    influencerSources,
+    loading,
+    availablePlatforms,
+    addOrUpdateInfluencerSource,
+    removeInfluencerSource,
+    getInfluencerPlatforms,
+    isInfluencerAdded
+  } = useInfluencerSources();
 
-  // Mock connected and available sources
-  const mockSources = {
-    youtube: {
-      connected: [
-        { id: "pomp-connected", name: "Anthony Pompliano", url: "https://youtube.com/@AnthonyPompliano", subscribers: "1.2M", active: true, category: "Crypto" },
-        { id: "raoul-connected", name: "Raoul Pal", url: "https://youtube.com/@RaoulPal", subscribers: "890K", active: true, category: "Macro" },
-        { id: "coinbureau-connected", name: "Coin Bureau", url: "https://youtube.com/@CoinBureau", subscribers: "2.1M", active: false, category: "Crypto" },
-      ],
-      available: [
-        { id: "benjamin-cowen", name: "Benjamin Cowen", url: "https://youtube.com/@BenjaminCowen", subscribers: "1.8M", category: "Crypto" },
-        { id: "altcoin-daily", name: "Altcoin Daily", url: "https://youtube.com/@AltcoinDaily", subscribers: "1.3M", category: "Crypto" },
-        { id: "coin-desk", name: "CoinDesk", url: "https://youtube.com/@CoinDesk", subscribers: "420K", category: "News" },
-        { id: "real-vision", name: "Real Vision", url: "https://youtube.com/@RealVision", subscribers: "680K", category: "Finance" },
-        { id: "lex-fridman", name: "Lex Fridman", url: "https://youtube.com/@lexfridman", subscribers: "2.8M", category: "Tech" },
-      ]
-    },
-    twitter: {
-      connected: [
-        { id: "pomp-twitter", name: "@APompliano", handle: "APompliano", followers: "1.8M", active: true, category: "Crypto" },
-        { id: "raoul-twitter", name: "@RaoulGMI", handle: "RaoulGMI", followers: "1.2M", active: true, category: "Macro" },
-      ],
-      available: [
-        { id: "saylor-twitter", name: "@saylor", handle: "saylor", followers: "3.1M", category: "Bitcoin" },
-        { id: "elonmusk-twitter", name: "@elonmusk", handle: "elonmusk", followers: "150M", category: "Tech" },
-        { id: "naval-twitter", name: "@naval", handle: "naval", followers: "2.1M", category: "Philosophy" },
-        { id: "balaji-twitter", name: "@balajis", handle: "balajis", followers: "920K", category: "Tech" },
-        { id: "cathie-twitter", name: "@CathieDWood", handle: "CathieDWood", followers: "2.1M", category: "Innovation" },
-      ]
-    },
-    substack: {
-      connected: [
-        { id: "defiant-connected", name: "The Defiant", url: "thedefiant.substack.com", subscribers: "45K", active: true, category: "DeFi" },
-        { id: "bankless-connected", name: "Bankless", url: "banklesshq.substack.com", subscribers: "125K", active: true, category: "Crypto" },
-      ],
-      available: [
-        { id: "lyn-alden", name: "Lyn Alden Investment Strategy", url: "lynalden.substack.com", subscribers: "85K", category: "Finance" },
-        { id: "morning-brew", name: "Morning Brew", url: "morningbrew.substack.com", subscribers: "200K", category: "Business" },
-        { id: "stratechery", name: "Stratechery", url: "stratechery.substack.com", subscribers: "150K", category: "Tech" },
-        { id: "macro-musings", name: "Macro Musings", url: "macromusings.substack.com", subscribers: "35K", category: "Economics" },
-      ]
-    },
-    reddit: {
-      connected: [
-        { id: "bitcoin-connected", name: "r/Bitcoin", url: "/r/Bitcoin", members: "4.8M", active: true, category: "Bitcoin" },
-        { id: "wsb-connected", name: "r/WallStreetBets", url: "/r/WallStreetBets", members: "15M", active: false, category: "Trading" },
-      ],
-      available: [
-        { id: "ethereum-reddit", name: "r/ethereum", url: "/r/ethereum", members: "1.2M", category: "Ethereum" },
-        { id: "investing-reddit", name: "r/investing", url: "/r/investing", members: "2.1M", category: "Investing" },
-        { id: "cryptocurrency-reddit", name: "r/CryptoCurrency", url: "/r/CryptoCurrency", members: "6.8M", category: "Crypto" },
-        { id: "defi-reddit", name: "r/defi", url: "/r/defi", members: "450K", category: "DeFi" },
-        { id: "stocks-reddit", name: "r/stocks", url: "/r/stocks", members: "4.2M", category: "Stocks" },
-      ]
-    }
-  };
-
-  // Influencers list from onboarding (subset for demo)
+  // Influencers list - financial experts and thought leaders
   const influencers = [
     // Crypto & Bitcoin
     { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
@@ -134,63 +81,47 @@ const Sources = () => {
     influencer.platform.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleInfluencerToggle = (influencerId: string) => {
-    setSelectedInfluencers(prev => 
-      prev.includes(influencerId)
-        ? prev.filter(id => id !== influencerId)
-        : [...prev, influencerId]
-    );
-  };
-
-  const handleYoutubeToggle = (sourceId: string) => {
-    setSelectedYoutube(prev => 
-      prev.includes(sourceId)
-        ? prev.filter(id => id !== sourceId)
-        : [...prev, sourceId]
-    );
-  };
-
-  const handleTwitterToggle = (sourceId: string) => {
-    setSelectedTwitter(prev => 
-      prev.includes(sourceId)
-        ? prev.filter(id => id !== sourceId)
-        : [...prev, sourceId]
-    );
-  };
-
-  const handleSubstackToggle = (sourceId: string) => {
-    setSelectedSubstack(prev => 
-      prev.includes(sourceId)
-        ? prev.filter(id => id !== sourceId)
-        : [...prev, sourceId]
-    );
-  };
-
-  const handleRedditToggle = (sourceId: string) => {
-    setSelectedReddit(prev => 
-      prev.includes(sourceId)
-        ? prev.filter(id => id !== sourceId)
-        : [...prev, sourceId]
-    );
-  };
-
-  const getSourceIcon = (type: string) => {
-    switch (type) {
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
       case 'youtube': return Play;
       case 'twitter': return MessageCircle;
+      case 'podcasts': return Mic;
       case 'substack': return FileText;
-      case 'reddit': return FileText;
+      case 'newsletters': return Mail;
       default: return FileText;
     }
   };
 
-  const getSourceColor = (type: string) => {
-    switch (type) {
+  const getPlatformColor = (platform: string) => {
+    switch (platform) {
       case 'youtube': return 'text-red-500';
       case 'twitter': return 'text-blue-500';
+      case 'podcasts': return 'text-purple-500';
       case 'substack': return 'text-orange-500';
-      case 'reddit': return 'text-orange-600';
+      case 'newsletters': return 'text-green-500';
       default: return 'text-gray-500';
+    }
+  };
+
+  const handlePlatformToggle = async (influencerId: string, influencerName: string, platform: string) => {
+    const currentPlatforms = getInfluencerPlatforms(influencerId);
+    const newPlatforms = currentPlatforms.includes(platform)
+      ? currentPlatforms.filter(p => p !== platform)
+      : [...currentPlatforms, platform];
+    
+    try {
+      await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms);
+    } catch (error) {
+      console.error('Error updating platforms:', error);
+    }
+  };
+
+  const handleRemoveInfluencer = async (influencerId: string) => {
+    try {
+      await removeInfluencerSource(influencerId);
+      setEditingInfluencer(null);
+    } catch (error) {
+      console.error('Error removing influencer:', error);
     }
   };
 
@@ -202,526 +133,187 @@ const Sources = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Content Sources</h1>
           <p className="text-muted-foreground">
-            Manage your content sources and configure automatic content ingestion from various platforms.
+            Select financial influencers and experts, then choose which platforms to monitor for their content.
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="people" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              People
-            </TabsTrigger>
-            <TabsTrigger value="youtube" className="flex items-center gap-2">
-              <Play className="h-4 w-4" />
-              YouTube
-            </TabsTrigger>
-            <TabsTrigger value="twitter" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Twitter
-            </TabsTrigger>
-            <TabsTrigger value="substack" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Substack
-            </TabsTrigger>
-            <TabsTrigger value="reddit" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Reddit
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="people" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Add Influencers & Experts
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Browse and add influential voices you might have missed during onboarding
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, category, or platform..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Selected Count */}
-                {selectedInfluencers.length > 0 && (
-                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <span className="text-sm font-medium">
-                      {selectedInfluencers.length} influencer{selectedInfluencers.length !== 1 ? 's' : ''} selected
-                    </span>
-                    <Button size="sm">
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Add Selected
-                    </Button>
-                  </div>
-                )}
-
-                {/* Influencers Grid */}
-                <div className="grid gap-4 max-h-96 overflow-y-auto">
-                  {filteredInfluencers.map((influencer) => (
-                    <div key={influencer.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                      <Checkbox
-                        id={influencer.id}
-                        checked={selectedInfluencers.includes(influencer.id)}
-                        onCheckedChange={() => handleInfluencerToggle(influencer.id)}
-                      />
-                      <Label htmlFor={influencer.id} className="flex-1 cursor-pointer">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{influencer.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {influencer.platform} • {influencer.followers} followers
-                            </div>
+        {/* Added Influencers Section */}
+        {influencerSources.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                Active Sources ({influencerSources.length})
+              </CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Manage your selected influencers and their content platforms
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {influencerSources.map((source) => {
+                const influencer = influencers.find(inf => inf.id === source.influencer_id);
+                const isEditing = editingInfluencer === source.influencer_id;
+                
+                return (
+                  <div key={source.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <div className="font-medium">{source.influencer_name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {influencer?.platform} • {influencer?.followers} followers
                           </div>
-                          <Badge variant="outline" className="ml-2">
-                            {influencer.category}
-                          </Badge>
                         </div>
-                      </Label>
+                        <Badge variant="outline">{influencer?.category}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingInfluencer(isEditing ? null : source.influencer_id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => handleRemoveInfluencer(source.influencer_id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-
-                {filteredInfluencers.length === 0 && searchTerm && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No influencers found matching "{searchTerm}"
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="youtube" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Play className="h-5 w-5 text-red-500" />
-                  YouTube Channels
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Manage connected channels and discover new ones to follow
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search channels by name or category..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Connected Sources */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Connected Channels</h4>
-                  <div className="grid gap-3">
-                    {mockSources.youtube.connected.map((source) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Play className="h-5 w-5 text-red-500" />
-                          <div>
-                            <div className="font-medium">{source.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {source.subscribers} subscribers
+                    
+                    {/* Platform Selection */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Content Platforms:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {availablePlatforms.map((platform) => {
+                          const Icon = getPlatformIcon(platform);
+                          const isSelected = source.selected_platforms.includes(platform);
+                          
+                          return (
+                            <div key={platform} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${source.influencer_id}-${platform}`}
+                                checked={isSelected}
+                                disabled={!isEditing}
+                                onCheckedChange={() => 
+                                  isEditing && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
+                                }
+                              />
+                              <Label 
+                                htmlFor={`${source.influencer_id}-${platform}`}
+                                className={`flex items-center gap-1 cursor-pointer capitalize ${
+                                  !isEditing ? 'opacity-50' : ''
+                                }`}
+                              >
+                                <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
+                                {platform}
+                              </Label>
                             </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add New Influencers Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Add Financial Influencers & Experts
+            </CardTitle>
+            <div className="text-sm text-muted-foreground">
+              Browse and add influential voices in finance, crypto, and technology
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, category, or platform..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Available Influencers */}
+            <div className="grid gap-4 max-h-96 overflow-y-auto">
+              {filteredInfluencers.map((influencer) => {
+                const isAdded = isInfluencerAdded(influencer.id);
+                const selectedPlatforms = getInfluencerPlatforms(influencer.id);
+                
+                return (
+                  <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <div className="font-medium">{influencer.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {influencer.platform} • {influencer.followers} followers
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={source.active ? "default" : "secondary"}>
-                            {source.active ? "Active" : "Paused"}
-                          </Badge>
-                          <Button size="sm" variant="ghost">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Badge variant="outline">{influencer.category}</Badge>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Available Sources */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Discover New Channels</h4>
-                    {selectedYoutube.length > 0 && (
-                      <Button size="sm">
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Add {selectedYoutube.length} Channel{selectedYoutube.length !== 1 ? 's' : ''}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-3 max-h-64 overflow-y-auto">
-                    {mockSources.youtube.available
-                      .filter(source => 
-                        source.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        source.category.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((source) => (
-                      <div key={source.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                        <Checkbox
-                          id={source.id}
-                          checked={selectedYoutube.includes(source.id)}
-                          onCheckedChange={() => handleYoutubeToggle(source.id)}
-                        />
-                        <Label htmlFor={source.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Play className="h-5 w-5 text-red-500" />
-                              <div>
-                                <div className="font-medium">{source.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {source.subscribers} subscribers
-                                </div>
-                              </div>
+                      {isAdded && (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Added
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {/* Platform Selection */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground">Select Content Platforms:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {availablePlatforms.map((platform) => {
+                          const Icon = getPlatformIcon(platform);
+                          const isSelected = selectedPlatforms.includes(platform);
+                          
+                          return (
+                            <div key={platform} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${influencer.id}-${platform}`}
+                                checked={isSelected}
+                                onCheckedChange={() => 
+                                  handlePlatformToggle(influencer.id, influencer.name, platform)
+                                }
+                              />
+                              <Label 
+                                htmlFor={`${influencer.id}-${platform}`}
+                                className="flex items-center gap-1 cursor-pointer capitalize"
+                              >
+                                <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
+                                {platform}
+                              </Label>
                             </div>
-                            <Badge variant="outline">
-                              {source.category}
-                            </Badge>
-                          </div>
-                        </Label>
+                          );
+                        })}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                );
+              })}
+            </div>
 
-          <TabsContent value="twitter" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-blue-500" />
-                  Twitter Accounts
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Manage connected accounts and discover new voices to follow
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search accounts by name or category..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Connected Sources */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Connected Accounts</h4>
-                  <div className="grid gap-3">
-                    {mockSources.twitter.connected.map((source) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <MessageCircle className="h-5 w-5 text-blue-500" />
-                          <div>
-                            <div className="font-medium">{source.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {source.followers} followers
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={source.active ? "default" : "secondary"}>
-                            {source.active ? "Active" : "Paused"}
-                          </Badge>
-                          <Button size="sm" variant="ghost">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Available Sources */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Discover New Accounts</h4>
-                    {selectedTwitter.length > 0 && (
-                      <Button size="sm">
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Add {selectedTwitter.length} Account{selectedTwitter.length !== 1 ? 's' : ''}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-3 max-h-64 overflow-y-auto">
-                    {mockSources.twitter.available
-                      .filter(source => 
-                        source.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        source.category.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((source) => (
-                      <div key={source.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                        <Checkbox
-                          id={source.id}
-                          checked={selectedTwitter.includes(source.id)}
-                          onCheckedChange={() => handleTwitterToggle(source.id)}
-                        />
-                        <Label htmlFor={source.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <MessageCircle className="h-5 w-5 text-blue-500" />
-                              <div>
-                                <div className="font-medium">{source.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {source.followers} followers
-                                </div>
-                              </div>
-                            </div>
-                            <Badge variant="outline">
-                              {source.category}
-                            </Badge>
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-
-          <TabsContent value="substack" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-500" />
-                  Substack Publications
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Manage connected publications and discover new financial newsletters
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search publications by name or category..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Connected Sources */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Connected Publications</h4>
-                  <div className="grid gap-3">
-                    {mockSources.substack.connected.map((source) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-orange-500" />
-                          <div>
-                            <div className="font-medium">{source.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {source.subscribers} subscribers
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={source.active ? "default" : "secondary"}>
-                            {source.active ? "Active" : "Paused"}
-                          </Badge>
-                          <Button size="sm" variant="ghost">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Available Sources */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Discover New Publications</h4>
-                    {selectedSubstack.length > 0 && (
-                      <Button size="sm">
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Add {selectedSubstack.length} Publication{selectedSubstack.length !== 1 ? 's' : ''}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-3 max-h-64 overflow-y-auto">
-                    {mockSources.substack.available
-                      .filter(source => 
-                        source.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        source.category.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((source) => (
-                      <div key={source.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                        <Checkbox
-                          id={source.id}
-                          checked={selectedSubstack.includes(source.id)}
-                          onCheckedChange={() => handleSubstackToggle(source.id)}
-                        />
-                        <Label htmlFor={source.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-5 w-5 text-orange-500" />
-                              <div>
-                                <div className="font-medium">{source.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {source.subscribers} subscribers
-                                </div>
-                              </div>
-                            </div>
-                            <Badge variant="outline">
-                              {source.category}
-                            </Badge>
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="reddit" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-600" />
-                  Reddit Communities
-                </CardTitle>
-                <div className="text-sm text-muted-foreground">
-                  Manage connected subreddits and discover new financial communities
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search communities by name or category..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                {/* Connected Sources */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Connected Communities</h4>
-                  <div className="grid gap-3">
-                    {mockSources.reddit.connected.map((source) => (
-                      <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-orange-600" />
-                          <div>
-                            <div className="font-medium">{source.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {source.members} members
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={source.active ? "default" : "secondary"}>
-                            {source.active ? "Active" : "Paused"}
-                          </Badge>
-                          <Button size="sm" variant="ghost">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Available Sources */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Discover New Communities</h4>
-                    {selectedReddit.length > 0 && (
-                      <Button size="sm">
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Add {selectedReddit.length} Community{selectedReddit.length !== 1 ? 'ies' : 'y'}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-3 max-h-64 overflow-y-auto">
-                    {mockSources.reddit.available
-                      .filter(source => 
-                        source.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        source.category.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((source) => (
-                      <div key={source.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50">
-                        <Checkbox
-                          id={source.id}
-                          checked={selectedReddit.includes(source.id)}
-                          onCheckedChange={() => handleRedditToggle(source.id)}
-                        />
-                        <Label htmlFor={source.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-5 w-5 text-orange-600" />
-                              <div>
-                                <div className="font-medium">{source.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {source.members} members
-                                </div>
-                              </div>
-                            </div>
-                            <Badge variant="outline">
-                              {source.category}
-                            </Badge>
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            {filteredInfluencers.length === 0 && searchTerm && (
+              <div className="text-center py-8 text-muted-foreground">
+                No influencers found matching "{searchTerm}"
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
