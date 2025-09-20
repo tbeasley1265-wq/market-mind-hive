@@ -35,7 +35,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      const maxHeight = 300;
+      const maxHeight = 360;
       const newHeight = Math.min(textarea.scrollHeight, maxHeight);
       textarea.style.height = `${newHeight}px`;
       textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
@@ -57,7 +57,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
 
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (textarea) textarea.style.height = '100px';
+    if (textarea) textarea.style.height = '120px';
   }, []);
 
   useEffect(() => {
@@ -178,7 +178,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
           </ScrollArea>
 
           <div className="mt-4 px-4">
-            <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-3xl shadow-md">
+            <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border-[3px] border-gray-300 dark:border-gray-600 rounded-3xl shadow-md">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -186,7 +186,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
                 className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 px-1 outline-none resize-none overflow-y-auto whitespace-pre-wrap break-words"
-                style={{ height: 'auto', minHeight: '100px', maxHeight: '300px' }}
+                style={{ height: 'auto', minHeight: '120px', maxHeight: '360px' }}
                 disabled={isLoading}
               />
               <Button
