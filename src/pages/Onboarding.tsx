@@ -25,7 +25,6 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [selectedInfluencers, setSelectedInfluencers] = useState<string[]>([]);
-  const [summaryLength, setSummaryLength] = useState<string>("standard");
   const [searchTerm, setSearchTerm] = useState("");
   const [notifications, setNotifications] = useState({
     email: true,
@@ -33,7 +32,7 @@ const Onboarding = () => {
     frequency: "daily"
   });
 
-  const totalSteps = 4;
+  const totalSteps = 3;
   const progress = (currentStep / totalSteps) * 100;
 
   const interests = [
@@ -384,55 +383,8 @@ const Onboarding = () => {
           </Card>
         )}
 
-        {/* Step 3: Summary Preferences */}
+        {/* Step 3: Notifications */}
         {currentStep === 3 && (
-          <Card className="border-card-border shadow-elevated">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <TrendingUp className="h-6 w-6 text-accent" />
-                Summary Preferences
-              </CardTitle>
-              <CardDescription>
-                Choose how detailed you want your content summaries to be
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                {[
-                  { id: "brief", label: "Brief", description: "Quick bullet points and key takeaways", time: "30 sec read" },
-                  { id: "standard", label: "Standard", description: "Balanced overview with main insights", time: "2 min read" },
-                  { id: "detailed", label: "Detailed", description: "Comprehensive analysis with full context", time: "5 min read" }
-                ].map((option) => (
-                  <div
-                    key={option.id}
-                    onClick={() => setSummaryLength(option.id)}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                      summaryLength === option.id 
-                        ? 'border-accent bg-accent/10 shadow-card' 
-                        : 'border-card-border hover:border-accent/50 hover:bg-accent/5'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-foreground">{option.label}</h3>
-                          {summaryLength === option.id && <CheckCircle2 className="h-4 w-4 text-accent" />}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{option.description}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {option.time}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 4: Notifications */}
-        {currentStep === 4 && (
           <Card className="border-card-border shadow-elevated">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2">
