@@ -36,7 +36,16 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
+      const maxHeight = 300; // Max height in pixels
+      const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+      textarea.style.height = `${newHeight}px`;
+      
+      // Enable internal scrolling if content exceeds max height
+      if (textarea.scrollHeight > maxHeight) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
     }
   };
 
@@ -48,6 +57,18 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [input]);
+
+  useEffect(() => {
+    // Set initial height on mount
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = '60px';
+    }
+  }, []);
 
   useEffect(() => {
     if (contentId && contentTitle) {
@@ -194,13 +215,18 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
           <div className="mt-4">
             <div className="max-w-3xl mx-auto px-4">
               <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
-                <Textarea
+                <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything about the content or financial markets..."
-                  className="flex-1 min-h-[48px] max-h-48 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 overflow-hidden"
+                  className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 px-1 outline-none resize-none overflow-y-hidden whitespace-pre-wrap"
+                  style={{
+                    height: 'auto',
+                    minHeight: '60px',
+                    maxHeight: '300px'
+                  }}
                   disabled={isLoading}
                 />
                 <Button
