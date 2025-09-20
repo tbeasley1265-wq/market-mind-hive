@@ -265,30 +265,6 @@ const Dashboard = () => {
       originalUrl: "https://example.com/energy",
       isBookmarked: false
     },
-    {
-      id: "mock-9",
-      title: "Nvidia's Data Center Revenue Projections",
-      source: "Semiconductor Insights",
-      platform: "substack" as const,
-      author: "Chip Analysis Team",
-      timestamp: "2 days ago",
-      summary: "Analysis of Nvidia's data center segment growth trajectory. Examines AI chip demand, competitive threats, and margin sustainability in the enterprise market.",
-      tags: ["Nvidia", "AI", "Semiconductors", "Tech Stocks"],
-      originalUrl: "https://substack.com/nvidia",
-      isBookmarked: false
-    },
-    {
-      id: "mock-10",
-      title: "China's Property Market Stabilization Efforts",
-      source: "Asia Markets Today",
-      platform: "twitter" as const,
-      author: "Beijing Correspondent",
-      timestamp: "3 days ago",
-      summary: "Latest government interventions in China's property sector show signs of stabilization. Impact on commodities, global growth, and emerging market currencies analyzed.",
-      tags: ["China", "Real Estate", "Emerging Markets", "Commodities"],
-      originalUrl: "https://twitter.com/china-property",
-      isBookmarked: false
-    }
   ];
 
   // Combine content items and mock content
