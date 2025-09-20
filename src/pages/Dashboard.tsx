@@ -417,14 +417,6 @@ const Dashboard = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={handleCreateFolder}
-              >
-                <FolderPlus className="h-4 w-4 mr-2" />
-                New Folder
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
                 onClick={() => setShowUploadSourcesModal(true)}
               >
                 <Upload className="h-4 w-4 mr-2" />
