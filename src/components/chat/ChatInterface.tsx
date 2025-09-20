@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,16 +35,10 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      const maxHeight = 300; // Max height in pixels
+      const maxHeight = 300;
       const newHeight = Math.min(textarea.scrollHeight, maxHeight);
       textarea.style.height = `${newHeight}px`;
-      
-      // Enable internal scrolling if content exceeds max height
-      if (textarea.scrollHeight > maxHeight) {
-        textarea.style.overflowY = 'auto';
-      } else {
-        textarea.style.overflowY = 'hidden';
-      }
+      textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
     }
   };
 
@@ -63,11 +56,8 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
   }, [input]);
 
   useEffect(() => {
-    // Set initial height on mount
     const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = '60px';
-    }
+    if (textarea) textarea.style.height = '100px';
   }, []);
 
   useEffect(() => {
@@ -99,21 +89,14 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
     setInput('');
     setIsLoading(true);
 
-    // Reset textarea height after clearing input
     setTimeout(() => {
       const textarea = textareaRef.current;
-      if (textarea) {
-        textarea.style.height = 'auto';
-      }
+      if (textarea) textarea.style.height = 'auto';
     }, 0);
 
     try {
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          message: input,
-          contentId,
-          conversationId
-        }
+        body: { message: input, contentId, conversationId }
       });
 
       if (error) throw error;
@@ -125,10 +108,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId);
-      }
+      if (data.conversationId && !conversationId) setConversationId(data.conversationId);
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -159,37 +139,22 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
               <h3 className="font-semibold">AI Research Assistant</h3>
             </div>
             {onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                ×
-              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose}>×</Button>
             )}
           </div>
 
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4">
               {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
+                <div key={index} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' && (
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-primary" />
                     </div>
                   )}
-                  <div
-                    className={`max-w-[80%] p-3 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground ml-auto'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    <span className="text-xs opacity-70 mt-2 block">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
+                  <div className={`max-w-[80%] p-4 rounded-xl ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted'}`}>
+                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                    <span className="text-xs opacity-70 mt-2 block">{message.timestamp.toLocaleTimeString()}</span>
                   </div>
                   {message.role === 'user' && (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -212,37 +177,31 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
             </div>
           </ScrollArea>
 
-          <div className="mt-4">
-            <div className="max-w-3xl mx-auto px-4">
-              <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={handleInputChange}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything about the content or financial markets..."
-                  className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 px-1 outline-none resize-none overflow-y-hidden whitespace-pre-wrap"
-                  style={{
-                    height: 'auto',
-                    minHeight: '60px',
-                    maxHeight: '300px'
-                  }}
-                  disabled={isLoading}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!input.trim() || isLoading}
-                  size="sm"
-                  className="rounded-full h-10 w-10 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 mt-1"
-                  variant="ghost"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+          <div className="mt-4 px-4">
+            <div className="flex items-start gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-3xl shadow-md">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-3 px-1 outline-none resize-none overflow-y-auto whitespace-pre-wrap break-words"
+                style={{ height: 'auto', minHeight: '100px', maxHeight: '300px' }}
+                disabled={isLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!input.trim() || isLoading}
+                size="sm"
+                className="rounded-full h-12 w-12 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 mt-1"
+                variant="ghost"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>
