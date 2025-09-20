@@ -125,6 +125,26 @@ const Sources = () => {
     }
   };
 
+  const handleSelectAllPlatforms = async (influencerId: string, influencerName: string) => {
+    try {
+      await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms]);
+    } catch (error) {
+      console.error('Error selecting all platforms:', error);
+    }
+  };
+
+  const handleSelectAllInfluencers = async () => {
+    try {
+      for (const influencer of influencers) {
+        if (!isInfluencerAdded(influencer.id)) {
+          await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms]);
+        }
+      }
+    } catch (error) {
+      console.error('Error selecting all influencers:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -229,11 +249,18 @@ const Sources = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Add Financial Influencers & Experts
+              Add People & Platforms
             </CardTitle>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground mb-4">
               Browse and add influential voices in finance, crypto, and technology
             </div>
+            <Button
+              onClick={handleSelectAllInfluencers}
+              variant="outline"
+              className="mb-4"
+            >
+              Select All People
+            </Button>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Search */}
@@ -265,12 +292,21 @@ const Sources = () => {
                         </div>
                         <Badge variant="outline">{influencer.category}</Badge>
                       </div>
-                      {isAdded && (
-                        <Badge variant="default" className="bg-green-500">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Added
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSelectAllPlatforms(influencer.id, influencer.name)}
+                        >
+                          Select All
+                        </Button>
+                        {isAdded && (
+                          <Badge variant="default" className="bg-green-500">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Added
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Platform Selection */}

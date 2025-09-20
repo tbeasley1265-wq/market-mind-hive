@@ -91,11 +91,11 @@ const Dashboard = () => {
     setShowFolderModal(true);
   };
 
-  const handleSaveFolder = async (name: string, color: string) => {
+  const handleSaveFolder = async (name: string) => {
     if (editingFolder) {
-      await updateFolder(editingFolder.id, { name, color });
+      await updateFolder(editingFolder.id, { name });
     } else {
-      await createFolder(name, color);
+      await createFolder(name);
     }
   };
 

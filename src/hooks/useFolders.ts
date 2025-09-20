@@ -43,7 +43,7 @@ export function useFolders() {
     }
   };
 
-  const createFolder = async (name: string, color: string) => {
+  const createFolder = async (name: string) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -51,8 +51,7 @@ export function useFolders() {
         .from('folders')
         .insert({
           user_id: user.id,
-          name,
-          color
+          name
         })
         .select()
         .single();

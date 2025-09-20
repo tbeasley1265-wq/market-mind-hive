@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 interface FolderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (name: string, color: string) => Promise<void>;
+  onSave: (name: string) => Promise<void>;
   folder?: {
     id: string;
     name: string;
@@ -27,7 +27,6 @@ const colorOptions = [
 
 export function FolderModal({ isOpen, onClose, onSave, folder }: FolderModalProps) {
   const [name, setName] = useState(folder?.name || '');
-  const [selectedColor, setSelectedColor] = useState(folder?.color || 'blue');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,9 +35,8 @@ export function FolderModal({ isOpen, onClose, onSave, folder }: FolderModalProp
 
     setIsLoading(true);
     try {
-      await onSave(name.trim(), selectedColor);
+      await onSave(name.trim());
       setName('');
-      setSelectedColor('blue');
       onClose();
     } catch (error) {
       console.error('Error saving folder:', error);
@@ -49,7 +47,6 @@ export function FolderModal({ isOpen, onClose, onSave, folder }: FolderModalProp
 
   const handleClose = () => {
     setName('');
-    setSelectedColor('blue');
     onClose();
   };
 
@@ -74,24 +71,6 @@ export function FolderModal({ isOpen, onClose, onSave, folder }: FolderModalProp
             />
           </div>
 
-          <div className="space-y-3">
-            <Label>Color</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {colorOptions.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  onClick={() => setSelectedColor(color.value)}
-                  className={`flex items-center gap-2 p-2 rounded-md border transition-colors hover:bg-muted ${
-                    selectedColor === color.value ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded-full ${color.class}`} />
-                  <span className="text-sm">{color.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>
