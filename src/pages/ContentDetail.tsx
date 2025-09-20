@@ -338,17 +338,8 @@ const ContentDetail = () => {
 
       {/* Main Content Area */}
       <div className="max-w-4xl mx-auto px-8 py-8">
-        {/* Summary */}
-        <div className="mb-8">
-          <h2 className="text-lg font-medium text-foreground mb-4">Summary</h2>
-          <div className="text-muted-foreground leading-relaxed">
-            {content.summary}
-          </div>
-        </div>
-
         {/* Full Content */}
         <div className="mb-8">
-          <h2 className="text-lg font-medium text-foreground mb-4">Content</h2>
           <div className="prose prose-neutral dark:prose-invert max-w-none">
             <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed">
               {content.full_content}
