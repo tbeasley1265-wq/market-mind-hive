@@ -324,7 +324,7 @@ const ContentDetail = () => {
       </div>
 
       {/* Bottom Chat Input - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border/40 p-4 mx-0">
+      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-sm border-t border-border/40 p-4 py-[35px] my-0 px-0 mx-[130px] bg-white/95 rounded-none">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
