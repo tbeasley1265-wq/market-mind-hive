@@ -171,13 +171,13 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
 
           <div className="mt-4">
             <div className="max-w-3xl mx-auto px-4">
-              <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything about the content or financial markets..."
-                  className="flex-1 min-h-[24px] max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="flex-1 min-h-[40px] max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-6 placeholder:text-gray-500 dark:placeholder:text-gray-400 py-2"
                   disabled={isLoading}
                   rows={1}
                 />
@@ -185,7 +185,7 @@ const ChatInterface = ({ contentId, contentTitle, onClose }: ChatInterfaceProps)
                   onClick={handleSendMessage}
                   disabled={!input.trim() || isLoading}
                   size="sm"
-                  className="rounded-full h-8 w-8 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
+                  className="rounded-full h-10 w-10 p-0 shrink-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
                   variant="ghost"
                 >
                   {isLoading ? (
