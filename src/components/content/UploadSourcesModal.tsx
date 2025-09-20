@@ -49,27 +49,17 @@ const UploadSourcesModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                <Upload className="h-5 w-5 text-accent" />
-                Add sources
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Sources let Research Hub base its responses on the information that matters most to you.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                (Examples: research reports, earnings calls, market analysis, newsletters, etc.)
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="text-accent border-accent/20 hover:bg-accent/10"
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Discover sources
-            </Button>
+          <div>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+              <Upload className="h-5 w-5 text-accent" />
+              Add sources
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sources let Research Hub base its responses on the information that matters most to you.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              (Examples: research reports, earnings calls, market analysis, newsletters, etc.)
+            </p>
           </div>
         </DialogHeader>
         
