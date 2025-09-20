@@ -167,7 +167,32 @@ const Dashboard = () => {
     }
   };
 
+  // Mock data for demonstration
   const mockContent = [
+    {
+      id: "mock-1",
+      title: "Bitcoin ETF Approval: What This Means for Crypto Markets",
+      source: "Real Vision",
+      platform: "youtube" as const,
+      author: "Raoul Pal",
+      timestamp: "2 hours ago",
+      summary: "Deep dive into the recent Bitcoin ETF approval and its implications for institutional adoption. Raoul discusses the potential for $100B+ inflows and what this means for BTC price action in the coming quarters.",
+      tags: ["Bitcoin", "ETF", "Institutional", "Regulation"],
+      originalUrl: "https://youtube.com/watch?v=example",
+      isBookmarked: false
+    },
+    {
+      id: "mock-2",
+      title: "Federal Reserve Policy Update - Interest Rate Decision Analysis",
+      source: "Macro Musings",
+      platform: "substack" as const,
+      author: "David Beckworth",
+      timestamp: "4 hours ago",
+      summary: "Analysis of the latest Fed decision and its impact on markets. Key insights on inflation targeting, employment data, and the path forward for monetary policy in 2024.",
+      tags: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
+      originalUrl: "https://substack.com/example",
+      isBookmarked: false
+    },
     {
       id: "mock-3",
       title: "AI Bubble or Sustainable Growth? Tech Earnings Deep Dive",
