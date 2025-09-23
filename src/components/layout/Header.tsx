@@ -170,8 +170,12 @@ const Header = () => {
               </DropdownMenu>
             ) : (
               <>
-                <Button variant="ghost">Sign In</Button>
-                <Button variant="hero">Get Started</Button>
+                <Button variant="ghost" asChild>
+                  <Link to="/auth?tab=signin">Sign In</Link>
+                </Button>
+                <Button variant="hero" asChild>
+                  <Link to="/auth">Get Started</Link>
+                </Button>
               </>
             )}
           </div>
@@ -228,8 +232,12 @@ const Header = () => {
                     </>
                   ) : (
                     <>
-                      <Button variant="ghost" className="justify-start">Sign In</Button>
-                      <Button variant="hero" className="justify-start">Get Started</Button>
+                      <Button variant="ghost" className="justify-start" asChild>
+                        <Link to="/auth?tab=signin">Sign In</Link>
+                      </Button>
+                      <Button variant="hero" className="justify-start" asChild>
+                        <Link to="/auth">Get Started</Link>
+                      </Button>
                     </>
                   )}
                 </div>
