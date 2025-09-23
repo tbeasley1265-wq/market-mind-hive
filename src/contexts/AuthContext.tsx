@@ -70,6 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
+    // Clear local state immediately
+    setUser(null);
+    setSession(null);
+    
+    // Sign out from Supabase (this also clears localStorage)
     await supabase.auth.signOut();
   };
 
