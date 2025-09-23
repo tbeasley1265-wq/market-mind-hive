@@ -173,14 +173,21 @@ const Auth = () => {
                       <Separator className="w-full" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">Social Login</span>
+                      <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                     </div>
                   </div>
 
-                  <div className="mt-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Social login will be available after deployment
-                    </p>
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleSocialAuth('google')}
+                      disabled={loading}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Continue with Google
+                    </Button>
                   </div>
                 </div>
               </TabsContent>
@@ -249,14 +256,21 @@ const Auth = () => {
                       <Separator className="w-full" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">Social Login</span>
+                      <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                     </div>
                   </div>
 
-                  <div className="mt-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Social login will be available after deployment
-                    </p>
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleSocialAuth('google')}
+                      disabled={loading}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Continue with Google
+                    </Button>
                   </div>
                 </div>
               </TabsContent>
