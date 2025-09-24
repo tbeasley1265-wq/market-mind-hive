@@ -167,106 +167,22 @@ const Dashboard = () => {
     }
   };
 
-  // Mock data for demonstration
-  const mockContent = [
-    {
-      id: "mock-1",
-      title: "Bitcoin ETF Approval: What This Means for Crypto Markets",
-      source: "Real Vision",
-      platform: "youtube" as const,
-      author: "Raoul Pal",
-      timestamp: "2 hours ago",
-      summary: "Deep dive into the recent Bitcoin ETF approval and its implications for institutional adoption. Raoul discusses the potential for $100B+ inflows and what this means for BTC price action in the coming quarters.",
-      tags: ["Bitcoin", "ETF", "Institutional", "Regulation"],
-      originalUrl: "https://youtube.com/watch?v=example",
-      isBookmarked: false
-    },
-    {
-      id: "mock-2",
-      title: "Federal Reserve Policy Update - Interest Rate Decision Analysis",
-      source: "Macro Musings",
-      platform: "substack" as const,
-      author: "David Beckworth",
-      timestamp: "4 hours ago",
-      summary: "Analysis of the latest Fed decision and its impact on markets. Key insights on inflation targeting, employment data, and the path forward for monetary policy in 2024.",
-      tags: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
-      originalUrl: "https://substack.com/example",
-      isBookmarked: false
-    },
-    {
-      id: "mock-3",
-      title: "AI Bubble or Sustainable Growth? Tech Earnings Deep Dive",
-      source: "The Acquirer's Multiple",
-      platform: "substack" as const,
-      author: "Tobias Carlisle",
-      timestamp: "6 hours ago",
-      summary: "Comprehensive analysis of recent tech earnings with focus on AI companies. Examines valuation multiples, revenue growth sustainability, and potential market corrections.",
-      tags: ["AI", "Tech Stocks", "Valuations", "Earnings"],
-      originalUrl: "https://substack.com/example2",
-      isBookmarked: false
-    },
-    {
-      id: "mock-4",
-      title: "Solana DeFi Ecosystem Update: TVL Hits All-Time High",
-      source: "DeFi Pulse",
-      platform: "twitter" as const,
-      author: "DeFi Analyst",
-      timestamp: "8 hours ago",
-      summary: "Solana's DeFi ecosystem has reached a new milestone with $2.5B TVL. Key drivers include Jupiter's growth, new DEX launches, and improved network stability after recent upgrades.",
-      tags: ["Solana", "DeFi", "TVL", "Crypto"],
-      originalUrl: "https://twitter.com/example",
-      isBookmarked: true
-    },
-    {
-      id: "mock-5",
-      title: "OpenAI GPT-5 Development Updates: What We Know So Far",
-      source: "AI Research Weekly",
-      platform: "email" as const,
-      author: "Sarah Chen",
-      timestamp: "12 hours ago",
-      summary: "Latest insights into GPT-5 development timeline, expected capabilities, and potential market impact. Includes analysis of computational requirements and competitive landscape.",
-      tags: ["AI", "OpenAI", "GPT-5", "Tech Stocks"],
-      originalUrl: "https://example.com/newsletter",
-      isBookmarked: false
-    },
-    {
-      id: "mock-6",
-      title: "Inflation Data Surprises Markets: What's Next for Bonds?",
-      source: "Bond Vigilantes",
-      platform: "substack" as const,
-      author: "Michael Grant",
-      timestamp: "1 day ago",
-      summary: "Unexpected inflation reading sends shockwaves through bond markets. Analysis of yield curve implications, Fed response scenarios, and portfolio positioning strategies.",
-      tags: ["Inflation", "Bonds", "Fed", "Monetary Policy"],
-      originalUrl: "https://substack.com/bonds",
-      isBookmarked: false
-    },
-  ];
-
-  // Combine content items and mock content
-  const allContent = [
-    ...contentItems.map(item => ({
-      id: item.id,
-      title: item.title,
-      source: item.platform,
-      platform: item.content_type as 'youtube' | 'substack' | 'email' | 'twitter' | 'reddit',
-      author: item.author || 'Unknown',
-      timestamp: new Date(item.created_at).toLocaleString(),
-      summary: item.summary || '',
-      tags: item.metadata?.tags || [],
-      originalUrl: item.original_url,
-      isBookmarked: item.is_bookmarked,
-      folderId: item.folder_id,
-      folderName: item.folders?.name,
-      folderColor: item.folders?.color
-    })),
-    ...mockContent.map(item => ({
-      ...item,
-      folderId: null,
-      folderName: null,
-      folderColor: null
-    }))
-  ];
+  // Use only real content from database
+  const allContent = contentItems.map(item => ({
+    id: item.id,
+    title: item.title,
+    source: item.platform,
+    platform: item.content_type as 'youtube' | 'substack' | 'email' | 'twitter' | 'reddit',
+    author: item.author || 'Unknown',
+    timestamp: new Date(item.created_at).toLocaleString(),
+    summary: item.summary || '',
+    tags: item.metadata?.tags || [],
+    originalUrl: item.original_url,
+    isBookmarked: item.is_bookmarked,
+    folderId: item.folder_id,
+    folderName: item.folders?.name,
+    folderColor: item.folders?.color
+  }));
 
   // Filter by folder first, then by content type
   const folderFilteredContent = selectedFolderId 
