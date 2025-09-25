@@ -16,13 +16,18 @@ import {
   Users,
   Edit,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from "lucide-react";
 import { useInfluencerSources } from "@/hooks/useInfluencerSources";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Sources = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
+  const [testingAggregator, setTestingAggregator] = useState(false);
+  const { toast } = useToast();
   
   const {
     influencerSources,
@@ -145,6 +150,31 @@ const Sources = () => {
     }
   };
 
+  const testPodcastIngestion = async () => {
+    setTestingAggregator(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('content-aggregator');
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: `Content aggregation completed! ${data?.processedCount || 0} new items processed.`
+      });
+      
+      console.log('Aggregation results:', data);
+    } catch (error) {
+      console.error('Error testing aggregator:', error);
+      toast({
+        title: "Error",
+        description: "Failed to run content aggregation. Check the console for details.",
+        variant: "destructive"
+      });
+    } finally {
+      setTestingAggregator(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -254,13 +284,23 @@ const Sources = () => {
             <div className="text-sm text-muted-foreground mb-4">
               Browse and add influential voices in finance, crypto, and technology
             </div>
-            <Button
-              onClick={handleSelectAllInfluencers}
-              variant="outline"
-              className="mb-4"
-            >
-              Select All People
-            </Button>
+            <div className="flex gap-2 mb-4">
+              <Button
+                onClick={handleSelectAllInfluencers}
+                variant="outline"
+              >
+                Select All People
+              </Button>
+              <Button
+                onClick={testPodcastIngestion}
+                disabled={testingAggregator}
+                variant="secondary"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${testingAggregator ? 'animate-spin' : ''}`} />
+                {testingAggregator ? 'Testing...' : 'Test Podcast Ingestion'}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Search */}
