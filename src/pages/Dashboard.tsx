@@ -42,6 +42,7 @@ const Dashboard = () => {
   const [editingFolder, setEditingFolder] = useState<any>(null);
   const [contentItems, setContentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
   const { folders, createFolder, updateFolder, deleteFolder, moveContentToFolder } = useFolders();
@@ -118,6 +119,46 @@ const Dashboard = () => {
       .order('created_at', { ascending: false });
     
     setContentItems(data || []);
+  };
+
+  const handleSyncContent = async () => {
+    if (!user || syncing) return;
+
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('content-aggregator');
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success) {
+        toast({
+          title: "Content Synced",
+          description: `Successfully processed ${data.processedCount} new items from your sources.`,
+        });
+
+        // Refresh content items to show new content
+        const { data: refreshedData } = await supabase
+          .from('content_items')
+          .select('*, folders(name, color)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        setContentItems(refreshedData || []);
+      } else {
+        throw new Error(data?.error || 'Failed to sync content');
+      }
+    } catch (error) {
+      console.error('Error syncing content:', error);
+      toast({
+        title: "Sync Failed", 
+        description: "Failed to sync content from your sources. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleSave = async (title: string, content: any) => {
@@ -282,6 +323,24 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSyncContent}
+                disabled={syncing}
+              >
+                {syncing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Sync Content
+                  </>
+                )}
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
