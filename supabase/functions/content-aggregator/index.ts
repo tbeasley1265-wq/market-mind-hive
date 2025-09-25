@@ -36,9 +36,7 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
     if (userError) {
