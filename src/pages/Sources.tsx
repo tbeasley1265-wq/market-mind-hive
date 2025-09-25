@@ -153,7 +153,16 @@ const Sources = () => {
   const testPodcastIngestion = async () => {
     setTestingAggregator(true);
     try {
-      const { data, error } = await supabase.functions.invoke('content-aggregator');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No authenticated session');
+      }
+
+      const { data, error } = await supabase.functions.invoke('content-aggregator', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
       
       if (error) throw error;
       
