@@ -249,6 +249,63 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_episodes: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          description: string | null
+          duration: number | null
+          episode_title: string
+          episode_url: string
+          guests: string[] | null
+          id: string
+          podcast_name: string
+          published_date: string | null
+          sentiment: string | null
+          summary: string | null
+          tags: string[] | null
+          transcript: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          episode_title: string
+          episode_url: string
+          guests?: string[] | null
+          id?: string
+          podcast_name: string
+          published_date?: string | null
+          sentiment?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          transcript?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration?: number | null
+          episode_title?: string
+          episode_url?: string
+          guests?: string[] | null
+          id?: string
+          podcast_name?: string
+          published_date?: string | null
+          sentiment?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          transcript?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
