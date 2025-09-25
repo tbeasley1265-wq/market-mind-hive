@@ -53,6 +53,38 @@ serve(async (req) => {
 
     console.log(`Starting content aggregation for user: ${user.id}`);
 
+    // Enhanced platform detection functions
+    const detectPlatformFromUrl = (url: string): string => {
+      if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+      if (url.includes('substack.com')) return 'substack';
+      if (url.includes('podcast') || url.includes('.mp3') || url.includes('rss') || url.includes('feed')) return 'podcast';
+      if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
+      if (url.includes('reddit.com')) return 'reddit';
+      return 'unknown';
+    };
+
+    const detectAuthorFromUrl = (url: string, defaultAuthor: string): string => {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname;
+        
+        // Extract meaningful author from domain
+        if (hostname.includes('substack.com')) {
+          const subdomain = hostname.split('.')[0];
+          return subdomain.charAt(0).toUpperCase() + subdomain.slice(1) + ' Substack';
+        }
+        
+        if (hostname.includes('webrush.io')) return 'WebRush Podcast';
+        if (hostname.includes('youtube.com')) return 'YouTube Creator';
+        
+        // Fallback to domain name
+        const cleanDomain = hostname.replace('www.', '').split('.')[0];
+        return cleanDomain.charAt(0).toUpperCase() + cleanDomain.slice(1);
+      } catch {
+        return defaultAuthor;
+      }
+    };
+
     // Fetch user's influencer sources
     const { data: influencerSources, error: sourcesError } = await supabaseClient
       .from('influencer_sources')
@@ -242,17 +274,23 @@ serve(async (req) => {
                       const transcript = await transcriptionResponse.text();
                       console.log(`Transcript length: ${transcript.length} characters`);
                       
-                      // Process transcript through content-processor for summarization
-                      const contentResponse = await supabaseClient.functions.invoke('content-processor', {
-                        body: {
-                          title: title,
-                          content: transcript,
-                          author: source.influencer_name,
-                          platform: 'podcast',
-                          originalUrl: episodeUrl,
-                          summaryLength: 'standard'
-                        }
-                      });
+                       // Auto-detect platform and author from URL
+                       const detectedPlatform = detectPlatformFromUrl(episodeUrl);
+                       const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
+                       
+                       console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
+                       
+                       // Process transcript through content-processor for summarization
+                       const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                         body: {
+                           title: title,
+                           content: transcript,
+                           author: detectedAuthor,
+                           platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
+                           originalUrl: episodeUrl,
+                           summaryLength: 'standard'
+                         }
+                       });
 
                       if (contentResponse.data?.success) {
                         const processedData = contentResponse.data.data;
@@ -276,12 +314,12 @@ serve(async (req) => {
                           .filter(g => g.length > 2 && g.length < 50)
                           .slice(0, 5); // Limit to 5 guests
                         
-                        // Store in podcast_episodes table
-                        const { error: insertError } = await supabaseClient
-                          .from('podcast_episodes')
-                          .insert({
-                            user_id: user.id,
-                            podcast_name: source.influencer_name,
+                         // Store in podcast_episodes table
+                         const { error: insertError } = await supabaseClient
+                           .from('podcast_episodes')
+                           .insert({
+                             user_id: user.id,
+                             podcast_name: detectedAuthor,
                             episode_title: title,
                             episode_url: episodeUrl,
                             audio_url: audioUrl,
@@ -300,10 +338,10 @@ serve(async (req) => {
                         }
                         
                         processedCount++;
-                        results.push({
-                          type: 'podcast',
-                          title: title,
-                          author: source.influencer_name,
+                         results.push({
+                           type: 'podcast',
+                           title: title,
+                           author: detectedAuthor,
                           url: episodeUrl,
                           status: 'processed',
                           transcript_length: transcript.length,
@@ -313,10 +351,10 @@ serve(async (req) => {
                     } catch (episodeError) {
                       console.error(`Error processing podcast episode ${title}:`, episodeError);
                       const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
-                      results.push({
-                        type: 'podcast',
-                        title: title,
-                        author: source.influencer_name,
+                       results.push({
+                         type: 'podcast',
+                         title: title,
+                         author: detectedAuthor,
                         url: episodeUrl,
                         status: 'error',
                         error: errorMessage
