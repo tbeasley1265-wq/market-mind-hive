@@ -14,7 +14,10 @@ serve(async (req) => {
   try {
     // Get the user from the request first
     const authHeader = req.headers.get('Authorization');
+    console.log(`Auth header received: ${authHeader ? 'present' : 'missing'}`);
+    
     if (!authHeader) {
+      console.log('No authorization header found');
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -37,7 +40,13 @@ serve(async (req) => {
       authHeader.replace('Bearer ', '')
     );
 
+    console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
+    if (userError) {
+      console.log(`User error: ${userError.message}`);
+    }
+
     if (userError || !user) {
+      console.log('Authentication failed, returning 401');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
