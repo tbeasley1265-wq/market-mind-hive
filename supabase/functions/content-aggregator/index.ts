@@ -351,10 +351,10 @@ serve(async (req) => {
                     } catch (episodeError) {
                       console.error(`Error processing podcast episode ${title}:`, episodeError);
                       const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
-                         results.push({
-                           type: 'podcast',
-                           title: title,
-                           author: source.influencer_name,
+                      results.push({
+                        type: 'podcast',
+                        title: title,
+                        author: source.influencer_name,
                         url: episodeUrl,
                         status: 'error',
                         error: errorMessage
