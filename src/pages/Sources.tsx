@@ -129,14 +129,24 @@ const Sources = () => {
     }
   };
 
-  const handlePlatformToggle = async (influencer: any, platform: string) => {
-    const currentPlatforms = getInfluencerPlatforms(influencer.name);
+  const handlePlatformToggle = async (
+    influencerId: string,
+    influencerName: string,
+    platform: string,
+    platformIdentifiers: Record<string, string | undefined>
+  ) => {
+    const currentPlatforms = getInfluencerPlatforms(influencerName);
     const newPlatforms = currentPlatforms.includes(platform)
       ? currentPlatforms.filter(p => p !== platform)
       : [...currentPlatforms, platform];
-    
+
     try {
-      await addOrUpdateInfluencerSource(influencer.urls || {}, influencer.name, newPlatforms);
+      await addOrUpdateInfluencerSource(
+        influencerId,
+        influencerName,
+        newPlatforms,
+        platformIdentifiers
+      );
     } catch (error) {
       console.error('Error updating platforms:', error);
     }
@@ -151,9 +161,18 @@ const Sources = () => {
     }
   };
 
-  const handleSelectAllPlatforms = async (influencerId: string, influencerName: string) => {
+  const handleSelectAllPlatforms = async (
+    influencerId: string,
+    influencerName: string,
+    platformIdentifiers: Record<string, string | undefined>
+  ) => {
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms]);
+      await addOrUpdateInfluencerSource(
+        influencerId,
+        influencerName,
+        [...availablePlatforms],
+        platformIdentifiers
+      );
     } catch (error) {
       console.error('Error selecting all platforms:', error);
     }
@@ -163,7 +182,12 @@ const Sources = () => {
     try {
       for (const influencer of influencers) {
         if (!isInfluencerAdded(influencer.id)) {
-          await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms]);
+          await addOrUpdateInfluencerSource(
+            influencer.id,
+            influencer.name,
+            [...availablePlatforms],
+            influencer.urls || {}
+          );
         }
       }
     } catch (error) {
@@ -232,6 +256,10 @@ const Sources = () => {
             <CardContent className="space-y-4">
               {influencerSources.map((source) => {
                 const influencer = influencers.find(inf => inf.id === source.influencer_id);
+                const mergedIdentifiers = {
+                  ...(source.platform_identifiers || {}),
+                  ...(influencer?.urls || {})
+                };
                 const isEditing = editingInfluencer === source.influencer_id;
                 
                 return (
@@ -279,16 +307,16 @@ const Sources = () => {
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
                                 disabled={!isEditing}
-                                 onCheckedChange={() => {
-                                   if (isEditing) {
-                                     // Create influencer object from source data
-                                     const influencer = {
-                                       name: source.influencer_name,
-                                       urls: JSON.parse(source.influencer_id)
-                                     };
-                                     handlePlatformToggle(influencer, platform);
-                                   }
-                                 }}
+                                onCheckedChange={() => {
+                                  if (isEditing) {
+                                    handlePlatformToggle(
+                                      source.influencer_id,
+                                      source.influencer_name,
+                                      platform,
+                                      mergedIdentifiers
+                                    );
+                                  }
+                                }}
                               />
                               <Label 
                                 htmlFor={`${source.influencer_id}-${platform}`}
@@ -373,7 +401,13 @@ const Sources = () => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleSelectAllPlatforms(influencer.id, influencer.name)}
+                          onClick={() =>
+                            handleSelectAllPlatforms(
+                              influencer.id,
+                              influencer.name,
+                              influencer.urls || {}
+                            )
+                          }
                         >
                           Select All
                         </Button>
@@ -399,8 +433,13 @@ const Sources = () => {
                               <Checkbox
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
-                                onCheckedChange={() => 
-                                  handlePlatformToggle(influencer, platform)
+                                onCheckedChange={() =>
+                                  handlePlatformToggle(
+                                    influencer.id,
+                                    influencer.name,
+                                    platform,
+                                    influencer.urls || {}
+                                  )
                                 }
                               />
                               <Label 

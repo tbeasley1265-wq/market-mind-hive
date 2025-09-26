@@ -103,15 +103,26 @@ serve(async (req) => {
     // Process each influencer source (limit to 2 to avoid memory issues)
     for (const source of (influencerSources || []).slice(0, 2)) {
       console.log(`Processing source: ${source.influencer_name}`);
-      
+
       try {
-        // Parse the influencer_id as JSON to get URLs
-        let sourceUrls: any = {};
-        try {
-          sourceUrls = JSON.parse(source.influencer_id);
-        } catch {
-          console.log(`Skipping ${source.influencer_name} - invalid URL data format`);
-          continue;
+        // Determine the identifiers for each selected platform
+        let sourceUrls: Record<string, string> = {};
+
+        if (source.platform_identifiers &&
+            typeof source.platform_identifiers === 'object' &&
+            !Array.isArray(source.platform_identifiers)) {
+          sourceUrls = source.platform_identifiers as Record<string, string>;
+        }
+
+        if (Object.keys(sourceUrls).length === 0) {
+          try {
+            const parsed = JSON.parse(source.influencer_id);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              sourceUrls = parsed as Record<string, string>;
+            }
+          } catch {
+            console.log(`No platform identifiers found for ${source.influencer_name}`);
+          }
         }
 
         // Process YouTube content
