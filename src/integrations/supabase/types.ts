@@ -225,7 +225,6 @@ export type Database = {
           id: string
           influencer_id: string
           influencer_name: string
-          platform_identifiers: Json | null
           selected_platforms: string[]
           updated_at: string
           user_id: string
@@ -235,7 +234,6 @@ export type Database = {
           id?: string
           influencer_id: string
           influencer_name: string
-          platform_identifiers?: Json | null
           selected_platforms?: string[]
           updated_at?: string
           user_id: string
@@ -245,7 +243,6 @@ export type Database = {
           id?: string
           influencer_id?: string
           influencer_name?: string
-          platform_identifiers?: Json | null
           selected_platforms?: string[]
           updated_at?: string
           user_id?: string
