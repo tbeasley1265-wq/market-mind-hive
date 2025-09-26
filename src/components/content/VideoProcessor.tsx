@@ -7,15 +7,29 @@ import { Youtube, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
+interface ProcessedVideoContent {
+  id?: string;
+  title?: string;
+  author?: string;
+  summary?: string;
+  tags?: string[];
+  sentiment?: string;
+  videoUrl?: string;
+  processed?: boolean;
+  [key: string]: unknown;
+}
+
+type VideoSummarizerResponse = ProcessedVideoContent & { error?: string };
+
 interface VideoProcessorProps {
-  onContentProcessed?: (content: any) => void;
+  onContentProcessed?: (content: ProcessedVideoContent) => void;
 }
 
 const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
   const [videoUrl, setVideoUrl] = useState('');
   const [summaryLength, setSummaryLength] = useState('standard');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedContent, setProcessedContent] = useState<any>(null);
+  const [processedContent, setProcessedContent] = useState<ProcessedVideoContent | null>(null);
   const { toast } = useToast();
 
   const handleProcessVideo = async () => {
@@ -40,7 +54,20 @@ const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
     setIsProcessing(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('video-summarizer', {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw sessionError;
+      }
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('No authenticated session found');
+      }
+
+      const { data, error } = await supabase.functions.invoke<VideoSummarizerResponse>('video-summarizer', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: {
           videoUrl,
           summaryLength
@@ -48,6 +75,10 @@ const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
       });
 
       if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       setProcessedContent(data);
       onContentProcessed?.(data);

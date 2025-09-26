@@ -6,6 +6,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type InvokeErrorPayload = {
+  message?: string;
+  status?: number;
+  context?: Record<string, unknown>;
+  [key: string]: unknown;
+} | null;
+
+type SupabaseAuthApi = {
+  setSession?: (session: { access_token: string; refresh_token: string }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+  setAuth?: (accessToken: string) => void;
+};
+
+const toNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' ? value : undefined;
+
+const toString = (value: unknown): string =>
+  (typeof value === 'string' ? value : '').toLowerCase();
+
+const logInvokeAuthFailure = (functionName: string, result: { data: unknown; error: unknown }) => {
+  const errorPayload = (result?.error ?? null) as InvokeErrorPayload;
+  const dataPayload = (result?.data ?? null) as Record<string, unknown> | null;
+
+  const contextStatus = errorPayload?.context && typeof errorPayload.context === 'object'
+    ? toNumber((errorPayload.context as Record<string, unknown>).status)
+    : undefined;
+
+  const directStatus = toNumber(errorPayload?.status);
+  const dataStatus = dataPayload && 'status' in dataPayload
+    ? toNumber((dataPayload.status as unknown))
+    : undefined;
+
+  const status = contextStatus ?? directStatus ?? dataStatus;
+
+  const dataError = dataPayload && 'error' in dataPayload
+    ? toString(dataPayload.error)
+    : '';
+
+  const messageSource = errorPayload?.message ?? (dataPayload && 'error' in dataPayload ? dataPayload.error : '');
+  const message = toString(messageSource);
+
+  const authMessageDetected = /\b(auth|authentication|authorize|authorization|token)\b/.test(message || dataError);
+
+  const authFailed = (typeof status === 'number' && status === 401) ||
+    message.includes('unauthorized') ||
+    dataError.includes('unauthorized') ||
+    authMessageDetected;
+
+  if (authFailed) {
+    console.error(`[Auth] ${functionName} invocation failed authentication`, {
+      status: typeof status === 'number' ? status : undefined,
+      message: typeof messageSource === 'string' ? messageSource : null,
+      rawError: errorPayload ?? dataPayload ?? null,
+    });
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -35,6 +91,33 @@ serve(async (req) => {
         },
       }
     );
+
+    const accessToken = authHeader.replace(/Bearer\s+/i, '').trim();
+    if (accessToken) {
+      const authClient = supabaseClient.auth as SupabaseAuthApi;
+      if (typeof authClient.setSession === 'function') {
+        try {
+          const { error: sessionError } = await authClient.setSession({
+            access_token: accessToken,
+            refresh_token: '',
+          });
+
+          if (sessionError) {
+            console.error('Failed to set Supabase auth session:', sessionError.message);
+            if (typeof authClient.setAuth === 'function') {
+              authClient.setAuth(accessToken);
+            }
+          }
+        } catch (sessionError) {
+          console.error('Error while setting Supabase auth session:', sessionError);
+          if (typeof authClient.setAuth === 'function') {
+            authClient.setAuth(accessToken);
+          }
+        }
+      } else if (typeof authClient.setAuth === 'function') {
+        authClient.setAuth(accessToken);
+      }
+    }
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
@@ -98,7 +181,7 @@ serve(async (req) => {
     console.log(`Found ${influencerSources?.length || 0} influencer sources`);
 
     let processedCount = 0;
-    const results: any[] = [];
+    const results: Array<Record<string, unknown>> = [];
 
     // Process each influencer source
     for (const source of influencerSources || []) {
@@ -114,8 +197,8 @@ serve(async (req) => {
             // Extract channel ID - assume influencer_id is the channel ID or URL
             let channelId = source.influencer_id;
             if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
+              const channelMatch = source.influencer_id.match(/channel\/([^/?]+)/);
+              const userMatch = source.influencer_id.match(/user\/([^/?]+)/);
               if (channelMatch) {
                 channelId = channelMatch[1];
               } else if (userMatch) {
@@ -147,11 +230,26 @@ serve(async (req) => {
                   
                   // Process video through video-summarizer
                   const videoResponse = await supabaseClient.functions.invoke('video-summarizer', {
+                    headers: {
+                      Authorization: authHeader,
+                    },
                     body: {
                       videoUrl: videoUrl,
                       summaryLength: 'standard'
                     }
                   });
+
+                  logInvokeAuthFailure('video-summarizer', videoResponse);
+
+                  if (videoResponse.error) {
+                    console.error('Error invoking video-summarizer:', videoResponse.error);
+                    throw videoResponse.error;
+                  }
+
+                  if (videoResponse.data?.error) {
+                    console.error('video-summarizer returned an error response:', videoResponse.data.error);
+                    throw new Error(videoResponse.data.error);
+                  }
 
                   if (videoResponse.data?.success) {
                     processedCount++;
@@ -174,7 +272,7 @@ serve(async (req) => {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
           
           // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
+          const feedUrl = source.influencer_id;
           
           try {
             const feedResponse = await fetch(feedUrl);
@@ -273,24 +371,39 @@ serve(async (req) => {
                       
                       const transcript = await transcriptionResponse.text();
                       console.log(`Transcript length: ${transcript.length} characters`);
-                      
-                       // Auto-detect platform and author from URL
-                       const detectedPlatform = detectPlatformFromUrl(episodeUrl);
-                       const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
-                       
-                       console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
-                       
-                       // Process transcript through content-processor for summarization
-                       const contentResponse = await supabaseClient.functions.invoke('content-processor', {
-                         body: {
-                           title: title,
-                           content: transcript,
-                           author: detectedAuthor,
-                           platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
-                           originalUrl: episodeUrl,
-                           summaryLength: 'standard'
-                         }
-                       });
+
+                      // Auto-detect platform and author from URL
+                      const detectedPlatform = detectPlatformFromUrl(episodeUrl);
+                      const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
+
+                      console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
+
+                      // Process transcript through content-processor for summarization
+                      const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                        headers: {
+                          Authorization: authHeader,
+                        },
+                        body: {
+                          title: title,
+                          content: transcript,
+                          author: detectedAuthor,
+                          platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
+                          originalUrl: episodeUrl,
+                          summaryLength: 'standard'
+                        }
+                      });
+
+                      logInvokeAuthFailure('content-processor', contentResponse);
+
+                      if (contentResponse.error) {
+                        console.error('Error invoking content-processor:', contentResponse.error);
+                        throw contentResponse.error;
+                      }
+
+                      if (contentResponse.data?.error) {
+                        console.error('content-processor returned an error response:', contentResponse.data.error);
+                        throw new Error(contentResponse.data.error);
+                      }
 
                       if (contentResponse.data?.success) {
                         const processedData = contentResponse.data.data;
@@ -351,10 +464,10 @@ serve(async (req) => {
                     } catch (episodeError) {
                       console.error(`Error processing podcast episode ${title}:`, episodeError);
                       const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
-                         results.push({
-                           type: 'podcast',
-                           title: title,
-                           author: source.influencer_name,
+                      results.push({
+                        type: 'podcast',
+                        title: title,
+                        author: source.influencer_name,
                         url: episodeUrl,
                         status: 'error',
                         error: errorMessage
@@ -374,10 +487,9 @@ serve(async (req) => {
           console.log(`Fetching newsletter content for ${source.influencer_name}`);
           
           // Construct RSS feed URL
-          let feedUrl = source.influencer_id;
-          if (source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')) {
-            feedUrl = source.influencer_id.replace(/\/$/, '') + '/feed';
-          }
+          const feedUrl = source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')
+            ? `${source.influencer_id.replace(/\/$/, '')}/feed`
+            : source.influencer_id;
           
           try {
             const feedResponse = await fetch(feedUrl);
@@ -410,6 +522,9 @@ serve(async (req) => {
                     
                     // Process through content-processor
                     const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                      headers: {
+                        Authorization: authHeader,
+                      },
                       body: {
                         title: title,
                         content: description,
@@ -419,6 +534,18 @@ serve(async (req) => {
                         summaryLength: 'standard'
                       }
                     });
+
+                    logInvokeAuthFailure('content-processor', contentResponse);
+
+                    if (contentResponse.error) {
+                      console.error('Error invoking content-processor:', contentResponse.error);
+                      throw contentResponse.error;
+                    }
+
+                    if (contentResponse.data?.error) {
+                      console.error('content-processor returned an error response:', contentResponse.data.error);
+                      throw new Error(contentResponse.data.error);
+                    }
 
                     if (contentResponse.data?.success) {
                       processedCount++;
