@@ -1,9 +1,81 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+type NormalizedItem = Record<string, unknown>;
+
+type PlatformHandlerResult = {
+  success: boolean;
+  processedItems: number;
+  items: NormalizedItem[];
+  error?: string;
+  warnings?: string[];
+  details?: Record<string, unknown>;
+};
+
+type PlatformWorkerResponse = {
+  success?: boolean;
+  processedItems?: number;
+  items?: NormalizedItem[];
+  error?: string;
+  warnings?: string[];
+  details?: Record<string, unknown>;
+};
+
+interface InfluencerSource {
+  id: string;
+  influencer_id: string;
+  influencer_name: string;
+  selected_platforms: string[];
+  [key: string]: unknown;
+}
+
+type PlatformHandler = (source: InfluencerSource) => Promise<PlatformHandlerResult>;
+
+type AggregationResult = {
+  sourceId: string;
+  influencerId: string;
+  influencerName: string;
+  platform: string;
+  success: boolean;
+  processedItems: number;
+  items: NormalizedItem[];
+  error?: string;
+  warnings?: string[];
+  details?: Record<string, unknown>;
+};
+
+interface YouTubeSearchItem {
+  id: {
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    channelTitle: string;
+  };
+}
+
+interface YouTubeSearchResponse {
+  items?: YouTubeSearchItem[];
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const normalizePlatformKey = (platform: string): string => {
+  switch (platform) {
+    case 'newsletters':
+      return 'rss';
+    case 'substack':
+      return 'rss';
+    case 'emails':
+      return 'email';
+    case 'podcast':
+      return 'podcasts';
+    default:
+      return platform;
+  }
 };
 
 serve(async (req) => {
@@ -12,10 +84,9 @@ serve(async (req) => {
   }
 
   try {
-    // Get the user from the request first
     const authHeader = req.headers.get('Authorization');
     console.log(`Auth header received: ${authHeader ? 'present' : 'missing'}`);
-    
+
     if (!authHeader) {
       console.log('No authorization header found');
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
@@ -38,13 +109,8 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
-    console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
-    if (userError) {
-      console.log(`User error: ${userError.message}`);
-    }
-
     if (userError || !user) {
-      console.log('Authentication failed, returning 401');
+      console.log('Authentication failed');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,39 +119,6 @@ serve(async (req) => {
 
     console.log(`Starting content aggregation for user: ${user.id}`);
 
-    // Enhanced platform detection functions
-    const detectPlatformFromUrl = (url: string): string => {
-      if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
-      if (url.includes('substack.com')) return 'substack';
-      if (url.includes('podcast') || url.includes('.mp3') || url.includes('rss') || url.includes('feed')) return 'podcast';
-      if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
-      if (url.includes('reddit.com')) return 'reddit';
-      return 'unknown';
-    };
-
-    const detectAuthorFromUrl = (url: string, defaultAuthor: string): string => {
-      try {
-        const urlObj = new URL(url);
-        const hostname = urlObj.hostname;
-        
-        // Extract meaningful author from domain
-        if (hostname.includes('substack.com')) {
-          const subdomain = hostname.split('.')[0];
-          return subdomain.charAt(0).toUpperCase() + subdomain.slice(1) + ' Substack';
-        }
-        
-        if (hostname.includes('webrush.io')) return 'WebRush Podcast';
-        if (hostname.includes('youtube.com')) return 'YouTube Creator';
-        
-        // Fallback to domain name
-        const cleanDomain = hostname.replace('www.', '').split('.')[0];
-        return cleanDomain.charAt(0).toUpperCase() + cleanDomain.slice(1);
-      } catch {
-        return defaultAuthor;
-      }
-    };
-
-    // Fetch user's influencer sources
     const { data: influencerSources, error: sourcesError } = await supabaseClient
       .from('influencer_sources')
       .select('*')
@@ -98,348 +131,372 @@ serve(async (req) => {
     console.log(`Found ${influencerSources?.length || 0} influencer sources`);
 
     let processedCount = 0;
-    const results: any[] = [];
+    const results: AggregationResult[] = [];
 
-    // Process each influencer source
+    const platformHandlers: Record<string, PlatformHandler> = {
+      youtube: async (source) => {
+        const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
+        if (!YOUTUBE_API_KEY) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: 'YouTube API key not configured',
+          };
+        }
+
+        let channelId = source.influencer_id;
+        if (channelId.includes('youtube.com') || channelId.includes('youtu.be')) {
+          const channelMatch = channelId.match(/channel\/([^/?]+)/);
+          const userMatch = channelId.match(/user\/([^/?]+)/);
+          if (channelMatch) {
+            channelId = channelMatch[1];
+          } else if (userMatch) {
+            channelId = userMatch[1];
+          }
+        }
+
+        try {
+          const searchResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=3`
+          );
+
+          if (!searchResponse.ok) {
+            return {
+              success: false,
+              processedItems: 0,
+              items: [],
+              error: `YouTube API error: ${searchResponse.status}`,
+            };
+          }
+
+          const searchData: YouTubeSearchResponse = await searchResponse.json();
+          const items: NormalizedItem[] = [];
+
+          for (const item of searchData.items || []) {
+            const videoUrl = `https://www.youtube.com/watch?v=${item.id.videoId}`;
+
+            const { data: existing } = await supabaseClient
+              .from('content_items')
+              .select('id')
+              .eq('original_url', videoUrl)
+              .eq('user_id', user.id)
+              .single<{ id: string }>();
+
+            if (existing) {
+              items.push({
+                title: item.snippet.title,
+                url: videoUrl,
+                author: item.snippet.channelTitle,
+                platform: 'youtube',
+                status: 'skipped',
+                reason: 'Already processed',
+              });
+              continue;
+            }
+
+            const videoResponse = await supabaseClient.functions.invoke<PlatformWorkerResponse>('video-summarizer', {
+              body: {
+                videoUrl,
+                summaryLength: 'standard',
+              },
+            });
+
+            if (videoResponse.error) {
+              items.push({
+                title: item.snippet.title,
+                url: videoUrl,
+                author: item.snippet.channelTitle,
+                platform: 'youtube',
+                status: 'error',
+                error: videoResponse.error.message,
+              });
+              continue;
+            }
+            const processed = videoResponse.data as PlatformWorkerResponse | null;
+            const processedDetails = processed?.details as Record<string, unknown> | undefined;
+            const processedItems = Array.isArray(processed?.items) ? processed.items : [];
+            const firstItem = processedItems.length > 0 ? processedItems[0] : null;
+            const firstItemId =
+              firstItem && typeof firstItem === 'object' && 'id' in firstItem && typeof (firstItem as Record<string, unknown>).id === 'string'
+                ? (firstItem as Record<string, unknown>).id
+                : null;
+            const summaryId = typeof processedDetails?.id === 'string' ? processedDetails.id : firstItemId;
+
+            items.push({
+              title: item.snippet.title,
+              url: videoUrl,
+              author: item.snippet.channelTitle,
+              platform: 'youtube',
+              status: 'processed',
+              summaryId,
+            });
+          }
+
+          const processedItems = items.filter((item) => item.status === 'processed').length;
+
+          return {
+            success: processedItems > 0,
+            processedItems,
+            items,
+            warnings: processedItems === 0 ? ['No new YouTube videos found'] : undefined,
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: errorMessage,
+          };
+        }
+      },
+      podcasts: async (source) => {
+        let feedUrl = source.influencer_id;
+        if (feedUrl.includes('feed') === false && feedUrl.includes('http')) {
+          feedUrl = feedUrl.replace(/\/$/, '') + '/feed';
+        }
+
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('podcast-processor', {
+          body: {
+            feedUrl,
+            influencerName: source.influencer_name,
+            influencerId: source.influencer_id,
+            userId: user.id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.processedItems || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+          details: data.details,
+        };
+      },
+      twitter: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('twitter-processor', {
+          body: {
+            handle: source.influencer_id,
+            userId: user.id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.items?.length || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+        };
+      },
+      reddit: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('reddit-processor', {
+          body: {
+            subreddit: source.influencer_id,
+            userId: user.id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.items?.length || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+        };
+      },
+      email: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('email-processor', {
+          body: {
+            userId: user.id,
+            sourceIdentifier: source.influencer_id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.processedItems || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+          details: data.details,
+        };
+      },
+      slack: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('slack-processor', {
+          body: {
+            channelId: source.influencer_id,
+            userId: user.id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.items?.length || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+        };
+      },
+      rss: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('rss-processor', {
+          body: {
+            feedUrl: source.influencer_id,
+            influencerName: source.influencer_name,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.items?.length || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+        };
+      },
+      uploads: async (source) => {
+        const response = await supabaseClient.functions.invoke<PlatformWorkerResponse>('upload-processor', {
+          body: {
+            userId: user.id,
+            sourceIdentifier: source.influencer_id,
+          },
+        });
+
+        if (response.error) {
+          return {
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: response.error.message,
+          };
+        }
+
+        const data = (response.data as PlatformWorkerResponse | null) ?? {};
+        return {
+          success: Boolean(data.success),
+          processedItems: data.items?.length || 0,
+          items: data.items || [],
+          error: data.error,
+          warnings: data.warnings,
+        };
+      },
+    };
+
     for (const source of influencerSources || []) {
       console.log(`Processing source: ${source.influencer_name}`);
-      
-      try {
-        // Process YouTube content
-        if (source.selected_platforms.includes('youtube')) {
-          const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
-          if (YOUTUBE_API_KEY) {
-            console.log(`Fetching YouTube content for ${source.influencer_name}`);
-            
-            // Extract channel ID - assume influencer_id is the channel ID or URL
-            let channelId = source.influencer_id;
-            if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
-              if (channelMatch) {
-                channelId = channelMatch[1];
-              } else if (userMatch) {
-                // For user URLs, we'd need to convert to channel ID via API
-                channelId = userMatch[1];
-              }
-            }
-            
-            const searchResponse = await fetch(
-              `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=3`
-            );
-            
-            if (searchResponse.ok) {
-              const searchData = await searchResponse.json();
-              
-              for (const item of searchData.items || []) {
-                const videoUrl = `https://www.youtube.com/watch?v=${item.id.videoId}`;
-                
-                // Check if we already have this video
-                const { data: existing } = await supabaseClient
-                  .from('content_items')
-                  .select('id')
-                  .eq('original_url', videoUrl)
-                  .eq('user_id', user.id)
-                  .single();
+      const platforms: string[] = Array.isArray(source.selected_platforms) ? source.selected_platforms : [];
 
-                if (!existing) {
-                  console.log(`Processing new YouTube video: ${item.snippet.title}`);
-                  
-                  // Process video through video-summarizer
-                  const videoResponse = await supabaseClient.functions.invoke('video-summarizer', {
-                    body: {
-                      videoUrl: videoUrl,
-                      summaryLength: 'standard'
-                    }
-                  });
+      for (const platform of platforms) {
+        const normalizedPlatform = normalizePlatformKey(platform);
+        const handler = platformHandlers[normalizedPlatform];
 
-                  if (videoResponse.data?.success) {
-                    processedCount++;
-                    results.push({
-                      type: 'youtube',
-                      title: item.snippet.title,
-                      author: item.snippet.channelTitle,
-                      url: videoUrl,
-                      status: 'processed'
-                    });
-                  }
-                }
-              }
-            }
-          }
+        if (!handler) {
+          results.push({
+            sourceId: source.id,
+            influencerId: source.influencer_id,
+            influencerName: source.influencer_name,
+            platform: normalizedPlatform,
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: `No handler configured for platform: ${normalizedPlatform}`,
+          });
+          continue;
         }
 
-        // Process Podcast content
-        if (source.selected_platforms.includes('podcasts')) {
-          console.log(`Fetching podcast content for ${source.influencer_name}`);
-          
-          // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
-          
-          try {
-            const feedResponse = await fetch(feedUrl);
-            if (feedResponse.ok) {
-              const feedText = await feedResponse.text();
-              
-              // Parse podcast RSS feed
-              const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
-              
-              for (const itemMatch of itemMatches.slice(0, 2)) { // Process latest 2 episodes due to processing time
-                const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
-                const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
-                const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
-                const pubDateMatch = itemMatch.match(/<pubDate[^>]*>(.*?)<\/pubDate>/s);
-                const durationMatch = itemMatch.match(/<itunes:duration[^>]*>(.*?)<\/itunes:duration>/s);
-                const audioMatch = itemMatch.match(/<enclosure[^>]*url="([^"]*\.mp3[^"]*)"[^>]*>/s);
-                
-                if (titleMatch && linkMatch && audioMatch) {
-                  const title = titleMatch[1]?.trim().replace(/<[^>]*>/g, '') || 'Untitled';
-                  const episodeUrl = linkMatch[1]?.trim();
-                  const description = descMatch ? descMatch[1]?.trim().replace(/<[^>]*>/g, '') : '';
-                  const audioUrl = audioMatch[1]?.trim();
-                  const pubDateStr = pubDateMatch ? pubDateMatch[1]?.trim() : '';
-                  const durationStr = durationMatch ? durationMatch[1]?.trim() : '';
-                  
-                  // Parse duration to seconds
-                  let duration = 0;
-                  if (durationStr) {
-                    const parts = durationStr.split(':').map(p => parseInt(p) || 0);
-                    if (parts.length === 3) { // HH:MM:SS
-                      duration = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                    } else if (parts.length === 2) { // MM:SS
-                      duration = parts[0] * 60 + parts[1];
-                    } else if (parts.length === 1) { // SS
-                      duration = parts[0];
-                    }
-                  }
-                  
-                  // Parse publication date
-                  let publishedDate = null;
-                  if (pubDateStr) {
-                    try {
-                      publishedDate = new Date(pubDateStr).toISOString();
-                    } catch (e) {
-                      console.warn(`Could not parse date: ${pubDateStr}`);
-                    }
-                  }
-                  
-                  // Check if we already have this episode
-                  const { data: existing } = await supabaseClient
-                    .from('podcast_episodes')
-                    .select('id')
-                    .eq('episode_url', episodeUrl)
-                    .eq('user_id', user.id)
-                    .single();
+        try {
+          const handlerResult = await handler(source);
+          processedCount += handlerResult.processedItems;
 
-                  if (!existing) {
-                    console.log(`Processing new podcast episode: ${title}`);
-                    
-                    try {
-                      // Download and transcribe audio
-                      console.log(`Downloading audio from: ${audioUrl}`);
-                      
-                      const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-                      if (!OPENAI_API_KEY) {
-                        throw new Error('OpenAI API key not configured');
-                      }
-                      
-                      const audioResponse = await fetch(audioUrl);
-                      if (!audioResponse.ok) {
-                        throw new Error(`Failed to download audio: ${audioResponse.status}`);
-                      }
-                      
-                      const audioBuffer = await audioResponse.arrayBuffer();
-                      
-                      // Create FormData for Whisper API
-                      const formData = new FormData();
-                      const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-                      formData.append('file', blob, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`);
-                      formData.append('model', 'whisper-1');
-                      formData.append('response_format', 'text');
-                      
-                      console.log(`Transcribing audio with Whisper API`);
-                      const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                        },
-                        body: formData,
-                      });
-                      
-                      if (!transcriptionResponse.ok) {
-                        const errorText = await transcriptionResponse.text();
-                        throw new Error(`Transcription failed: ${transcriptionResponse.status} - ${errorText}`);
-                      }
-                      
-                      const transcript = await transcriptionResponse.text();
-                      console.log(`Transcript length: ${transcript.length} characters`);
-                      
-                       // Auto-detect platform and author from URL
-                       const detectedPlatform = detectPlatformFromUrl(episodeUrl);
-                       const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
-                       
-                       console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
-                       
-                       // Process transcript through content-processor for summarization
-                       const contentResponse = await supabaseClient.functions.invoke('content-processor', {
-                         body: {
-                           title: title,
-                           content: transcript,
-                           author: detectedAuthor,
-                           platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
-                           originalUrl: episodeUrl,
-                           summaryLength: 'standard'
-                         }
-                       });
+          results.push({
+            sourceId: source.id,
+            influencerId: source.influencer_id,
+            influencerName: source.influencer_name,
+            platform: normalizedPlatform,
+            success: handlerResult.success,
+            processedItems: handlerResult.processedItems,
+            items: handlerResult.items,
+            error: handlerResult.error,
+            warnings: handlerResult.warnings,
+            details: handlerResult.details,
+          });
+        } catch (platformError) {
+          const message = platformError instanceof Error ? platformError.message : 'Unknown error occurred';
+          console.error(`Error processing ${normalizedPlatform} for ${source.influencer_name}:`, platformError);
 
-                      if (contentResponse.data?.success) {
-                        const processedData = contentResponse.data.data;
-                        
-                        // Extract guests from transcript (simple pattern matching)
-                        const guests: string[] = [];
-                        const guestPatterns = [
-                          /(?:with|featuring|guest|joined by)\s+([A-Z][a-zA-Z\s]+)/gi,
-                          /([A-Z][a-zA-Z\s]+)(?:\s+joins?\s+us|\s+is\s+here)/gi
-                        ];
-                        
-                        for (const pattern of guestPatterns) {
-                          const matches = transcript.match(pattern);
-                          if (matches) {
-                            guests.push(...matches.map(m => m.replace(/^(with|featuring|guest|joined by)\s+/i, '').trim()));
-                          }
-                        }
-                        
-                        // Remove duplicates and clean up
-                        const uniqueGuests = [...new Set(guests)]
-                          .filter(g => g.length > 2 && g.length < 50)
-                          .slice(0, 5); // Limit to 5 guests
-                        
-                         // Store in podcast_episodes table
-                         const { error: insertError } = await supabaseClient
-                           .from('podcast_episodes')
-                           .insert({
-                             user_id: user.id,
-                             podcast_name: detectedAuthor,
-                            episode_title: title,
-                            episode_url: episodeUrl,
-                            audio_url: audioUrl,
-                            published_date: publishedDate,
-                            duration: duration || null,
-                            description: description,
-                            transcript: transcript,
-                            summary: processedData.summary,
-                            guests: uniqueGuests,
-                            tags: processedData.tags || [],
-                            sentiment: processedData.sentiment
-                          });
-                        
-                        if (insertError) {
-                          throw insertError;
-                        }
-                        
-                        processedCount++;
-                         results.push({
-                           type: 'podcast',
-                           title: title,
-                           author: detectedAuthor,
-                          url: episodeUrl,
-                          status: 'processed',
-                          transcript_length: transcript.length,
-                          guests: uniqueGuests
-                        });
-                      }
-                    } catch (episodeError) {
-                      console.error(`Error processing podcast episode ${title}:`, episodeError);
-                      const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
-                         results.push({
-                           type: 'podcast',
-                           title: title,
-                           author: source.influencer_name,
-                        url: episodeUrl,
-                        status: 'error',
-                        error: errorMessage
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          } catch (feedError) {
-            console.error(`Error processing podcast RSS feed for ${source.influencer_name}:`, feedError);
-          }
+          results.push({
+            sourceId: source.id,
+            influencerId: source.influencer_id,
+            influencerName: source.influencer_name,
+            platform: normalizedPlatform,
+            success: false,
+            processedItems: 0,
+            items: [],
+            error: message,
+          });
         }
-
-        // Process Substack/Newsletter content
-        if (source.selected_platforms.includes('substack') || source.selected_platforms.includes('newsletters')) {
-          console.log(`Fetching newsletter content for ${source.influencer_name}`);
-          
-          // Construct RSS feed URL
-          let feedUrl = source.influencer_id;
-          if (source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')) {
-            feedUrl = source.influencer_id.replace(/\/$/, '') + '/feed';
-          }
-          
-          try {
-            const feedResponse = await fetch(feedUrl);
-            if (feedResponse.ok) {
-              const feedText = await feedResponse.text();
-              
-              // Simple RSS parsing
-              const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
-              
-              for (const itemMatch of itemMatches.slice(0, 3)) {
-                const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
-                const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
-                const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
-                
-                if (titleMatch && linkMatch) {
-                  const title = titleMatch[1]?.trim() || 'Untitled';
-                  const link = linkMatch[1]?.trim();
-                  const description = descMatch ? descMatch[1]?.trim() : '';
-                  
-                  // Check if we already have this content
-                  const { data: existing } = await supabaseClient
-                    .from('content_items')
-                    .select('id')
-                    .eq('original_url', link)
-                    .eq('user_id', user.id)
-                    .single();
-
-                  if (!existing) {
-                    console.log(`Processing new newsletter article: ${title}`);
-                    
-                    // Process through content-processor
-                    const contentResponse = await supabaseClient.functions.invoke('content-processor', {
-                      body: {
-                        title: title,
-                        content: description,
-                        author: source.influencer_name,
-                        platform: 'substack',
-                        originalUrl: link,
-                        summaryLength: 'standard'
-                      }
-                    });
-
-                    if (contentResponse.data?.success) {
-                      processedCount++;
-                      results.push({
-                        type: 'newsletter',
-                        title: title,
-                        author: source.influencer_name,
-                        url: link,
-                        status: 'processed'
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          } catch (feedError) {
-            console.error(`Error processing RSS feed for ${source.influencer_name}:`, feedError);
-          }
-        }
-      } catch (sourceError) {
-        console.error(`Error processing source ${source.influencer_name}:`, sourceError);
       }
     }
 
@@ -447,19 +504,18 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Successfully processed ${processedCount} new content items`,
+      message: `Successfully processed ${processedCount} content items`,
       processedCount,
-      results
+      results,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
     console.error('Error in content aggregator:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: errorMessage,
-      success: false 
+      success: false,
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
