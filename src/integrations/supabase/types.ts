@@ -86,6 +86,7 @@ export type Database = {
       }
       content_items: {
         Row: {
+          audio_url: string | null
           author: string | null
           content_type: string
           created_at: string
@@ -96,13 +97,16 @@ export type Database = {
           metadata: Json | null
           original_url: string | null
           platform: string
+          processing_status: string | null
           source_id: string | null
           summary: string | null
           title: string
+          transcript_url: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          audio_url?: string | null
           author?: string | null
           content_type: string
           created_at?: string
@@ -113,13 +117,16 @@ export type Database = {
           metadata?: Json | null
           original_url?: string | null
           platform: string
+          processing_status?: string | null
           source_id?: string | null
           summary?: string | null
           title: string
+          transcript_url?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          audio_url?: string | null
           author?: string | null
           content_type?: string
           created_at?: string
@@ -130,9 +137,11 @@ export type Database = {
           metadata?: Json | null
           original_url?: string | null
           platform?: string
+          processing_status?: string | null
           source_id?: string | null
           summary?: string | null
           title?: string
+          transcript_url?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -251,6 +260,7 @@ export type Database = {
       }
       podcast_episodes: {
         Row: {
+          audio_storage_path: string | null
           audio_url: string | null
           created_at: string
           description: string | null
@@ -260,15 +270,18 @@ export type Database = {
           guests: string[] | null
           id: string
           podcast_name: string
+          processing_status: string | null
           published_date: string | null
           sentiment: string | null
           summary: string | null
           tags: string[] | null
           transcript: string | null
+          transcript_storage_path: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          audio_storage_path?: string | null
           audio_url?: string | null
           created_at?: string
           description?: string | null
@@ -278,15 +291,18 @@ export type Database = {
           guests?: string[] | null
           id?: string
           podcast_name: string
+          processing_status?: string | null
           published_date?: string | null
           sentiment?: string | null
           summary?: string | null
           tags?: string[] | null
           transcript?: string | null
+          transcript_storage_path?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          audio_storage_path?: string | null
           audio_url?: string | null
           created_at?: string
           description?: string | null
@@ -296,11 +312,13 @@ export type Database = {
           guests?: string[] | null
           id?: string
           podcast_name?: string
+          processing_status?: string | null
           published_date?: string | null
           sentiment?: string | null
           summary?: string | null
           tags?: string[] | null
           transcript?: string | null
+          transcript_storage_path?: string | null
           updated_at?: string
           user_id?: string
         }
