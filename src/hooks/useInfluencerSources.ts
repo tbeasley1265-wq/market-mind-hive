@@ -9,6 +9,7 @@ export interface InfluencerSource {
   influencer_id: string;
   influencer_name: string;
   selected_platforms: string[];
+  platform_identifiers: Record<string, string>;
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +36,10 @@ export function useInfluencerSources() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setInfluencerSources(data || []);
+      setInfluencerSources((data || []).map(source => ({
+        ...source,
+        platform_identifiers: (source as any).platform_identifiers || {}
+      })));
     } catch (error) {
       console.error('Error fetching influencer sources:', error);
       toast({
@@ -49,20 +53,26 @@ export function useInfluencerSources() {
   };
 
   const addOrUpdateInfluencerSource = async (
-    influencerId: string, 
-    influencerName: string, 
-    selectedPlatforms: string[]
+    influencerId: string,
+    influencerName: string,
+    selectedPlatforms: string[],
+    platformIdentifiers: Record<string, string | undefined> = {}
   ) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
+      const sanitizedIdentifiers = Object.fromEntries(
+        Object.entries(platformIdentifiers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+      ) as Record<string, string>;
+
       const { data, error } = await supabase
         .from('influencer_sources')
         .upsert({
           user_id: user.id,
-          influencer_id: JSON.stringify(influencerId), // Store URLs as JSON string
+          influencer_id: influencerId,
           influencer_name: influencerName,
-          selected_platforms: selectedPlatforms
+          selected_platforms: selectedPlatforms,
+          platform_identifiers: sanitizedIdentifiers
         }, {
           onConflict: 'user_id,influencer_name' // Use name instead of id for conflict resolution
         })
@@ -70,13 +80,18 @@ export function useInfluencerSources() {
         .single();
 
       if (error) throw error;
-      
+
       setInfluencerSources(prev => {
-        const existing = prev.find(source => source.influencer_id === influencerId);
+        const normalizedData = {
+          ...data,
+          platform_identifiers: (data as any).platform_identifiers || {}
+        } as InfluencerSource;
+
+        const existing = prev.find(source => source.influencer_name === influencerName);
         if (existing) {
-          return prev.map(source => source.influencer_id === influencerId ? data : source);
+          return prev.map(source => source.influencer_name === influencerName ? normalizedData : source);
         } else {
-          return [...prev, data];
+          return [...prev, normalizedData];
         }
       });
 
@@ -131,8 +146,10 @@ export function useInfluencerSources() {
     return source?.selected_platforms || [];
   };
 
-  const isInfluencerAdded = (influencerName: string): boolean => {
-    return influencerSources.some(source => source.influencer_name === influencerName);
+  const isInfluencerAdded = (identifier: string): boolean => {
+    return influencerSources.some(source =>
+      source.influencer_name === identifier || source.influencer_id === identifier
+    );
   };
 
   useEffect(() => {
