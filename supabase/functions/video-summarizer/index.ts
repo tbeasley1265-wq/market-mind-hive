@@ -54,13 +54,31 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '');
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader);
-    
-    if (!user) {
-      throw new Error('User not authenticated');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+
+    if (serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`) {
+      userId = req.headers.get('x-user-id');
+      if (!userId) {
+        throw new Error('x-user-id header required for service role requests');
+      }
+    } else {
+      const token = authHeader?.replace('Bearer ', '');
+      if (!token) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: { user } } = await supabaseClient.auth.getUser(token);
+
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      userId = user.id;
     }
+
+    console.log(`video-summarizer invoked for user ${userId}`);
 
     let videoContent = '';
     let author = '';

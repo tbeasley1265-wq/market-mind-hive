@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,10 +42,41 @@ const Dashboard = () => {
   const [editingFolder, setEditingFolder] = useState<any>(null);
   const [contentItems, setContentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<{
+    lastSyncedAt: string | null;
+    lastStatus: string | null;
+    lastError: string | null;
+  } | null>(null);
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
   const { folders, createFolder, updateFolder, deleteFolder, moveContentToFolder } = useFolders();
+
+  const getSyncStatusVariant = (status: string | null) => {
+    switch (status) {
+      case 'success':
+        return 'secondary' as const;
+      case 'partial':
+        return 'outline' as const;
+      case 'error':
+        return 'destructive' as const;
+      default:
+        return 'outline' as const;
+    }
+  };
+
+  const getSyncStatusLabel = (status: string | null) => {
+    switch (status) {
+      case 'success':
+        return 'Synced';
+      case 'partial':
+        return 'Synced with warnings';
+      case 'error':
+        return 'Sync failed';
+      default:
+        return 'Not synced yet';
+    }
+  };
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -54,29 +85,93 @@ const Dashboard = () => {
     }
   }, [user, navigate]);
 
-  // Fetch content items from database
-  useEffect(() => {
-    const fetchContentItems = async () => {
-      if (!user) return;
+  const fetchContentItems = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        const { data, error } = await supabase
-          .from('content_items')
-          .select('*, folders(name, color)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('content_items')
+        .select('*, folders(name, color)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setContentItems(data || []);
-      } catch (error) {
-        console.error('Error fetching content:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContentItems();
+      if (error) throw error;
+      setContentItems(data || []);
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  const fetchSyncStatus = useCallback(async () => {
+    if (!user) {
+      setSyncStatus(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_sync_status')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        if ('code' in error && error.code === 'PGRST116') {
+          setSyncStatus(null);
+        } else {
+          throw error;
+        }
+      } else if (data) {
+        setSyncStatus({
+          lastSyncedAt: data.last_synced_at,
+          lastStatus: data.last_sync_status,
+          lastError: data.last_error,
+        });
+      } else {
+        setSyncStatus(null);
+      }
+    } catch (error) {
+      console.error('Error fetching sync status:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setLoading(true);
+    fetchContentItems();
+    fetchSyncStatus();
+  }, [user, fetchContentItems, fetchSyncStatus]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const contentChannel = supabase
+      .channel(`content-items-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_items', filter: `user_id=eq.${user.id}` }, () => {
+        fetchContentItems();
+      })
+      .subscribe();
+
+    const statusChannel = supabase
+      .channel(`user-sync-status-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_sync_status', filter: `user_id=eq.${user.id}` }, () => {
+        fetchSyncStatus();
+      })
+      .subscribe();
+
+    const statusInterval = window.setInterval(() => {
+      fetchSyncStatus();
+    }, 120000);
+
+    return () => {
+      supabase.removeChannel(contentChannel);
+      supabase.removeChannel(statusChannel);
+      window.clearInterval(statusInterval);
+    };
+  }, [user, fetchContentItems, fetchSyncStatus]);
 
   const handleContentClick = (contentId: string) => {
     navigate(`/content/${contentId}`);
@@ -111,14 +206,7 @@ const Dashboard = () => {
 
   const handleMoveToFolder = async (contentId: string, folderId: string | null) => {
     await moveContentToFolder(contentId, folderId);
-    // Refresh content items to reflect the change
-    const { data } = await supabase
-      .from('content_items')
-      .select('*, folders(name, color)')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false });
-    
-    setContentItems(data || []);
+    await fetchContentItems();
   };
 
 
@@ -151,14 +239,7 @@ const Dashboard = () => {
         description: `"${title}" has been saved to your bookmarks.`,
       });
 
-      // Refresh content items
-      const { data } = await supabase
-        .from('content_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      setContentItems(data || []);
+      await fetchContentItems();
     } catch (error) {
       console.error('Error saving content:', error);
       toast({
@@ -193,7 +274,7 @@ const Dashboard = () => {
 
   const filteredContent = folderFilteredContent.filter(content => {
     if (activeFilter === "all") return true;
-    
+
     const filterMap: Record<string, string[]> = {
       crypto: ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"],
       macro: ["Fed", "Interest Rates", "Monetary Policy", "Inflation"],
@@ -205,10 +286,14 @@ const Dashboard = () => {
       return content.isBookmarked;
     }
     
-    return content.tags.some((tag: string) => 
+    return content.tags.some((tag: string) =>
       filterMap[activeFilter]?.includes(tag)
     );
   });
+
+  const lastSyncedDisplay = syncStatus?.lastSyncedAt
+    ? new Date(syncStatus.lastSyncedAt).toLocaleString()
+    : 'Waiting for the first automatic sync';
 
   // Create folder items with content counts
   const folderItems = folders.map(folder => ({
@@ -270,30 +355,30 @@ const Dashboard = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                {selectedFolderId 
-                  ? folderItems.find(f => f.id === selectedFolderId)?.name || 'Folder' 
+                {selectedFolderId
+                  ? folderItems.find(f => f.id === selectedFolderId)?.name || 'Folder'
                   : 'Research Hub'
                 }
               </h1>
               <p className="text-muted-foreground">
-                {selectedFolderId 
+                {selectedFolderId
                   ? `Organize and manage your research content`
                   : 'Your curated financial intelligence dashboard'
                 }
               </p>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setShowUploadSourcesModal(true)}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => navigate('/sources')}
               >
@@ -302,6 +387,25 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
+
+          <Card className="border-muted shadow-sm">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Automatic sync status</p>
+                <p className="text-sm text-foreground">{lastSyncedDisplay}</p>
+              </div>
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <Badge variant={getSyncStatusVariant(syncStatus?.lastStatus ?? null)}>
+                  {getSyncStatusLabel(syncStatus?.lastStatus ?? null)}
+                </Badge>
+                {syncStatus?.lastError && (
+                  <span className="text-xs text-destructive max-w-xs text-left sm:text-right">
+                    {syncStatus.lastError}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Filters and View Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -336,6 +336,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sync_status: {
+        Row: {
+          last_error: string | null
+          last_sync_status: string
+          last_synced_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_error?: string | null
+          last_sync_status?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_error?: string | null
+          last_sync_status?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

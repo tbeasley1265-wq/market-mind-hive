@@ -3,14 +3,24 @@ project_id = "zpytenapldiyxvjrntrm"
 [functions.ai-chat]
 verify_jwt = true
 
+[functions.content-aggregator]
+verify_jwt = false
+
 [functions.content-processor]
-verify_jwt = true
+verify_jwt = false
 
 [functions.video-summarizer]
-verify_jwt = true
+verify_jwt = false
 
 [functions.gmail-integration]
 verify_jwt = true
 
 [functions.document-summarizer]
 verify_jwt = false
+
+[[cron.jobs]]
+name = "content-aggregation"
+schedule = "*/2 * * * *"
+http_method = "POST"
+endpoint = "https://zpytenapldiyxvjrntrm.functions.supabase.co/content-aggregator"
+headers = { Authorization = "Bearer {{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" }

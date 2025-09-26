@@ -6,17 +6,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type AggregationDetail = {
+  status?: string;
+  error?: string;
+  [key: string]: unknown;
+};
+
+type AggregationResult = {
+  user_id: string;
+  processedCount: number;
+  results: AggregationDetail[];
+  status: 'success' | 'partial' | 'error';
+  last_error: string | null;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get the user from the request first
     const authHeader = req.headers.get('Authorization');
-    console.log(`Auth header received: ${authHeader ? 'present' : 'missing'}`);
-    
-    if (!authHeader) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    const isServiceRoleCall = !!serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`;
+
+    if (!authHeader && !isServiceRoleCall) {
       console.log('No authorization header found');
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
@@ -25,54 +42,116 @@ serve(async (req) => {
     }
 
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
+      supabaseUrl,
+      isServiceRoleCall ? serviceRoleKey : anonKey,
+      isServiceRoleCall || !authHeader
+        ? undefined
+        : {
+            global: {
+              headers: {
+                Authorization: authHeader,
+              },
+            },
+          }
+    );
+
+    const targetUserIds: string[] = [];
+
+    if (isServiceRoleCall) {
+      const url = new URL(req.url);
+      const singleUserId = url.searchParams.get('user_id') ?? req.headers.get('x-user-id');
+
+      if (singleUserId) {
+        targetUserIds.push(singleUserId);
+      } else {
+        const { data: userRows, error: userLookupError } = await supabaseClient
+          .from('influencer_sources')
+          .select('user_id', { distinct: true });
+
+        if (userLookupError) {
+          throw userLookupError;
+        }
+
+        for (const row of userRows || []) {
+          if (row.user_id && !targetUserIds.includes(row.user_id)) {
+            targetUserIds.push(row.user_id);
+          }
+        }
       }
-    );
+    } else {
+      const token = authHeader?.replace('Bearer ', '') ?? '';
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+      console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
+      if (userError) {
+        console.log(`User error: ${userError.message}`);
+      }
 
-    console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
-    if (userError) {
-      console.log(`User error: ${userError.message}`);
+      if (userError || !user) {
+        console.log('Authentication failed, returning 401');
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      targetUserIds.push(user.id);
     }
 
-    if (userError || !user) {
-      console.log('Authentication failed, returning 401');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+    if (targetUserIds.length === 0) {
+      return new Response(JSON.stringify({ success: true, message: 'No users to process', results: [] }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Starting content aggregation for user: ${user.id}`);
+    const overallResults: AggregationResult[] = [];
 
-    // Fetch user's influencer sources
-    const { data: influencerSources, error: sourcesError } = await supabaseClient
-      .from('influencer_sources')
-      .select('*')
-      .eq('user_id', user.id);
+    for (const targetUserId of targetUserIds) {
+      console.log(`Starting content aggregation for user: ${targetUserId}`);
 
-    if (sourcesError) {
-      throw sourcesError;
-    }
+      const { data: influencerSources, error: sourcesError } = await supabaseClient
+        .from('influencer_sources')
+        .select('*')
+        .eq('user_id', targetUserId);
 
-    console.log(`Found ${influencerSources?.length || 0} influencer sources`);
+        if (sourcesError) {
+          console.error(`Error loading influencer sources for user ${targetUserId}:`, sourcesError);
+          await supabaseClient
+            .from('user_sync_status')
+            .upsert({
+              user_id: targetUserId,
+              last_synced_at: new Date().toISOString(),
+              last_sync_status: 'error',
+              last_error: sourcesError.message,
+            }, { onConflict: 'user_id' });
+          overallResults.push({
+            user_id: targetUserId,
+            processedCount: 0,
+            results: [],
+            status: 'error',
+            last_error: sourcesError.message,
+          });
+          continue;
+        }
 
-    let processedCount = 0;
-    const results: any[] = [];
+      console.log(`Found ${influencerSources?.length || 0} influencer sources`);
 
-    // Process each influencer source
-    for (const source of influencerSources || []) {
-      console.log(`Processing source: ${source.influencer_name}`);
+      let processedCount = 0;
+      const results: AggregationDetail[] = [];
+      const userFunctionHeaders = isServiceRoleCall
+        ? {
+            Authorization: `Bearer ${serviceRoleKey}`,
+            'x-user-id': targetUserId,
+          }
+        : authHeader
+          ? { Authorization: authHeader }
+          : undefined;
+      const functionInvokeOptions = userFunctionHeaders ? { headers: userFunctionHeaders } : {};
+
+      // Process each influencer source
+      for (const source of influencerSources || []) {
+        console.log(`Processing source: ${source.influencer_name}`);
       
       try {
         // Process YouTube content
@@ -84,8 +163,8 @@ serve(async (req) => {
             // Extract channel ID - assume influencer_id is the channel ID or URL
             let channelId = source.influencer_id;
             if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
+              const channelMatch = source.influencer_id.match(/channel\/([^/?]+)/);
+              const userMatch = source.influencer_id.match(/user\/([^/?]+)/);
               if (channelMatch) {
                 channelId = channelMatch[1];
               } else if (userMatch) {
@@ -109,7 +188,7 @@ serve(async (req) => {
                   .from('content_items')
                   .select('id')
                   .eq('original_url', videoUrl)
-                  .eq('user_id', user.id)
+                  .eq('user_id', targetUserId)
                   .single();
 
                 if (!existing) {
@@ -120,7 +199,8 @@ serve(async (req) => {
                     body: {
                       videoUrl: videoUrl,
                       summaryLength: 'standard'
-                    }
+                    },
+                    ...functionInvokeOptions,
                   });
 
                   if (videoResponse.data?.success) {
@@ -142,10 +222,10 @@ serve(async (req) => {
         // Process Podcast content
         if (source.selected_platforms.includes('podcasts')) {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
-          
+
           // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
-          
+          const feedUrl = source.influencer_id;
+
           try {
             const feedResponse = await fetch(feedUrl);
             if (feedResponse.ok) {
@@ -198,7 +278,7 @@ serve(async (req) => {
                     .from('podcast_episodes')
                     .select('id')
                     .eq('episode_url', episodeUrl)
-                    .eq('user_id', user.id)
+                    .eq('user_id', targetUserId)
                     .single();
 
                   if (!existing) {
@@ -253,7 +333,8 @@ serve(async (req) => {
                           platform: 'podcast',
                           originalUrl: episodeUrl,
                           summaryLength: 'standard'
-                        }
+                        },
+                        ...functionInvokeOptions,
                       });
 
                       if (contentResponse.data?.success) {
@@ -282,7 +363,7 @@ serve(async (req) => {
                         const { error: insertError } = await supabaseClient
                           .from('podcast_episodes')
                           .insert({
-                            user_id: user.id,
+                            user_id: targetUserId,
                             podcast_name: source.influencer_name,
                             episode_title: title,
                             episode_url: episodeUrl,
@@ -336,12 +417,11 @@ serve(async (req) => {
         // Process Substack/Newsletter content
         if (source.selected_platforms.includes('substack') || source.selected_platforms.includes('newsletters')) {
           console.log(`Fetching newsletter content for ${source.influencer_name}`);
-          
+
           // Construct RSS feed URL
-          let feedUrl = source.influencer_id;
-          if (source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')) {
-            feedUrl = source.influencer_id.replace(/\/$/, '') + '/feed';
-          }
+          const feedUrl = source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')
+            ? source.influencer_id.replace(/\/$/, '') + '/feed'
+            : source.influencer_id;
           
           try {
             const feedResponse = await fetch(feedUrl);
@@ -366,7 +446,7 @@ serve(async (req) => {
                     .from('content_items')
                     .select('id')
                     .eq('original_url', link)
-                    .eq('user_id', user.id)
+                    .eq('user_id', targetUserId)
                     .single();
 
                   if (!existing) {
@@ -381,7 +461,8 @@ serve(async (req) => {
                         platform: 'substack',
                         originalUrl: link,
                         summaryLength: 'standard'
-                      }
+                      },
+                      ...functionInvokeOptions,
                     });
 
                     if (contentResponse.data?.success) {
@@ -407,13 +488,41 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Content aggregation completed. Processed ${processedCount} new items.`);
+      const errorEntries = results.filter((entry) => entry?.status === 'error');
+      const syncStatus = errorEntries.length === 0
+        ? 'success'
+        : errorEntries.length === (results.length || 0)
+          ? 'error'
+          : 'partial';
+      const latestErrorMessage = errorEntries[0]?.error ?? null;
+
+      await supabaseClient
+        .from('user_sync_status')
+        .upsert({
+          user_id: targetUserId,
+          last_synced_at: new Date().toISOString(),
+          last_sync_status: syncStatus,
+          last_error: latestErrorMessage,
+        }, { onConflict: 'user_id' });
+
+      overallResults.push({
+        user_id: targetUserId,
+        processedCount,
+        results,
+        status: syncStatus,
+        last_error: latestErrorMessage,
+      });
+    }
+
+    const totalProcessed = overallResults.reduce((sum, item) => sum + (item.processedCount || 0), 0);
+
+    console.log(`Content aggregation completed. Processed ${totalProcessed} new items across ${overallResults.length} users.`);
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Successfully processed ${processedCount} new content items`,
-      processedCount,
-      results
+      message: `Successfully processed ${totalProcessed} new content items`,
+      processedCount: totalProcessed,
+      results: overallResults,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -421,7 +530,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in content aggregator:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: errorMessage,
       success: false 
     }), {
