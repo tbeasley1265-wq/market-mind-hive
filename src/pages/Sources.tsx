@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Header from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,319 @@ import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+type PlatformIdentifierMap = Partial<Record<string, string>>;
+
+type InfluencerCatalogEntry = {
+  id: string;
+  name: string;
+  platform: string;
+  followers: string;
+  category: string;
+  defaultPlatformIdentifiers: PlatformIdentifierMap;
+};
+
+const influencerCatalog: InfluencerCatalogEntry[] = [
+  {
+    id: "raoul-pal",
+    name: "Raoul Pal",
+    platform: "Real Vision",
+    followers: "1.2M",
+    category: "Macro",
+    defaultPlatformIdentifiers: {
+      youtube: "UCNy7z9fzU1etjg5vQ8Ea4rg",
+      podcasts: "https://feeds.megaphone.fm/ADV7482240834",
+      twitter: "RaoulGMI",
+    },
+  },
+  {
+    id: "anthony-pompliano",
+    name: "Anthony Pompliano",
+    platform: "YouTube",
+    followers: "1.8M",
+    category: "Crypto",
+    defaultPlatformIdentifiers: {
+      youtube: "UCevXpeL8cny5j1YXQe1R0QQ",
+      podcasts: "https://feeds.simplecast.com/TDxu8BcA",
+      substack: "https://thepompletter.substack.com/feed",
+      twitter: "APompliano",
+    },
+  },
+  {
+    id: "michael-saylor",
+    name: "Michael Saylor",
+    platform: "Twitter",
+    followers: "3.1M",
+    category: "Bitcoin",
+    defaultPlatformIdentifiers: {
+      youtube: "UCgK6O1apC-b8jo8YH6f6T_g",
+      podcasts: "https://feeds.buzzsprout.com/2104958.rss",
+      twitter: "saylor",
+    },
+  },
+  {
+    id: "balaji-srinivasan",
+    name: "Balaji Srinivasan",
+    platform: "Twitter",
+    followers: "920K",
+    category: "Tech",
+    defaultPlatformIdentifiers: {
+      substack: "https://balajis.com/feed",
+      twitter: "balajis",
+    },
+  },
+  {
+    id: "coin-bureau",
+    name: "Coin Bureau (Guy)",
+    platform: "YouTube",
+    followers: "2.1M",
+    category: "Crypto",
+    defaultPlatformIdentifiers: {
+      youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
+      podcasts: "https://feeds.buzzsprout.com/1716409.rss",
+      twitter: "coinbureau",
+    },
+  },
+  {
+    id: "benjamin-cowen",
+    name: "Benjamin Cowen",
+    platform: "YouTube",
+    followers: "1.8M",
+    category: "Crypto",
+    defaultPlatformIdentifiers: {
+      youtube: "UC8bI0uL-D87WKM2QX0ZNpLg",
+      podcasts: "https://feeds.buzzsprout.com/1821952.rss",
+      substack: "https://intocryptoverse.substack.com/feed",
+      twitter: "intocryptoverse",
+    },
+  },
+  {
+    id: "cathie-wood",
+    name: "Cathie Wood",
+    platform: "ARK Invest",
+    followers: "2.1M",
+    category: "Innovation",
+    defaultPlatformIdentifiers: {
+      youtube: "UCwFEQHvcAf6R5m4kY4FJzYw",
+      podcasts: "https://feeds.buzzsprout.com/815124.rss",
+      twitter: "CathieDWood",
+      newsletters: "https://www.ark-invest.com/newsletters/feed/",
+    },
+  },
+  {
+    id: "lyn-alden",
+    name: "Lyn Alden",
+    platform: "Substack",
+    followers: "450K",
+    category: "Finance",
+    defaultPlatformIdentifiers: {
+      substack: "https://newsletter.lynalden.com/feed/",
+      twitter: "LynAldenContact",
+      newsletters: "https://www.lynalden.com/feed/",
+    },
+  },
+  {
+    id: "ray-dalio",
+    name: "Ray Dalio",
+    platform: "LinkedIn",
+    followers: "3.2M",
+    category: "Macro",
+    defaultPlatformIdentifiers: {
+      youtube: "UCqY79sEJvXhqJx8zEo82T9A",
+      twitter: "RayDalio",
+      newsletters: "https://www.principles.com/blog/rss/",
+    },
+  },
+  {
+    id: "howard-marks",
+    name: "Howard Marks",
+    platform: "Oaktree Capital",
+    followers: "890K",
+    category: "Investing",
+    defaultPlatformIdentifiers: {
+      podcasts: "https://feeds.buzzsprout.com/1972703.rss",
+      newsletters: "https://www.oaktreecapital.com/insights/memo?format=rss",
+    },
+  },
+  {
+    id: "warren-buffett",
+    name: "Warren Buffett",
+    platform: "Berkshire Hathaway",
+    followers: "4.2M",
+    category: "Investing",
+    defaultPlatformIdentifiers: {
+      newsletters: "https://www.berkshirehathaway.com/rss/news.rss",
+    },
+  },
+  {
+    id: "bill-ackman",
+    name: "Bill Ackman",
+    platform: "Twitter",
+    followers: "1.2M",
+    category: "Investing",
+    defaultPlatformIdentifiers: {
+      twitter: "BillAckman",
+    },
+  },
+  {
+    id: "elon-musk",
+    name: "Elon Musk",
+    platform: "Twitter",
+    followers: "150M",
+    category: "Tech",
+    defaultPlatformIdentifiers: {
+      twitter: "elonmusk",
+      podcasts: "https://feeds.megaphone.fm/WSB5633927465",
+    },
+  },
+  {
+    id: "sam-altman",
+    name: "Sam Altman",
+    platform: "OpenAI",
+    followers: "2.1M",
+    category: "AI",
+    defaultPlatformIdentifiers: {
+      twitter: "sama",
+      newsletters: "https://blog.samaltman.com/posts.rss",
+    },
+  },
+  {
+    id: "jensen-huang",
+    name: "Jensen Huang",
+    platform: "NVIDIA",
+    followers: "680K",
+    category: "AI",
+    defaultPlatformIdentifiers: {
+      twitter: "jensenhuang",
+    },
+  },
+  {
+    id: "lex-fridman",
+    name: "Lex Fridman",
+    platform: "MIT/Podcast",
+    followers: "2.8M",
+    category: "AI",
+    defaultPlatformIdentifiers: {
+      youtube: "UCSHZKyawb77ixDdsGog4iWA",
+      podcasts: "https://lexfridman.com/feed/podcast/",
+      twitter: "lexfridman",
+    },
+  },
+  {
+    id: "marc-andreessen",
+    name: "Marc Andreessen",
+    platform: "a16z",
+    followers: "1.8M",
+    category: "VC",
+    defaultPlatformIdentifiers: {
+      twitter: "pmarca",
+      podcasts: "https://feeds.simplecast.com/JGE3yC0V",
+    },
+  },
+  {
+    id: "naval-ravikant",
+    name: "Naval Ravikant",
+    platform: "AngelList",
+    followers: "2.1M",
+    category: "VC",
+    defaultPlatformIdentifiers: {
+      twitter: "naval",
+      podcasts: "https://rss.art19.com/naval",
+      newsletters: "https://nav.al/feed",
+    },
+  },
+  {
+    id: "chamath-palihapitiya",
+    name: "Chamath Palihapitiya",
+    platform: "Social Capital",
+    followers: "1.6M",
+    category: "VC",
+    defaultPlatformIdentifiers: {
+      twitter: "chamath",
+      podcasts: "https://feeds.megaphone.fm/WSB5633927465",
+    },
+  },
+  {
+    id: "peter-thiel",
+    name: "Peter Thiel",
+    platform: "Founders Fund",
+    followers: "1.1M",
+    category: "VC",
+    defaultPlatformIdentifiers: {
+      newsletters: "https://foundersfund.com/feed/",
+    },
+  },
+  {
+    id: "paul-krugman",
+    name: "Paul Krugman",
+    platform: "New York Times",
+    followers: "5.2M",
+    category: "Economics",
+    defaultPlatformIdentifiers: {
+      twitter: "paulkrugman",
+      substack: "https://paulkrugman.substack.com/feed",
+    },
+  },
+  {
+    id: "janet-yellen",
+    name: "Janet Yellen",
+    platform: "US Treasury",
+    followers: "1.8M",
+    category: "Policy",
+    defaultPlatformIdentifiers: {
+      newsletters: "https://home.treasury.gov/news/press-releases/rss",
+    },
+  },
+  {
+    id: "jerome-powell",
+    name: "Jerome Powell",
+    platform: "Federal Reserve",
+    followers: "2.1M",
+    category: "Policy",
+    defaultPlatformIdentifiers: {
+      newsletters: "https://www.federalreserve.gov/feeds/press_all.xml",
+      podcasts: "https://www.federalreserve.gov/feeds/podcast.xml",
+    },
+  },
+  {
+    id: "brian-armstrong",
+    name: "Brian Armstrong",
+    platform: "Coinbase",
+    followers: "1.8M",
+    category: "Fintech",
+    defaultPlatformIdentifiers: {
+      twitter: "brian_armstrong",
+      podcasts: "https://feeds.simplecast.com/jg0aE7NV",
+    },
+  },
+  {
+    id: "jack-dorsey",
+    name: "Jack Dorsey",
+    platform: "Block (Square)",
+    followers: "5.8M",
+    category: "Fintech",
+    defaultPlatformIdentifiers: {
+      twitter: "jack",
+      substack: "https://blockxyz.substack.com/feed",
+    },
+  },
+  {
+    id: "patrick-collison",
+    name: "Patrick Collison",
+    platform: "Stripe",
+    followers: "680K",
+    category: "Fintech",
+    defaultPlatformIdentifiers: {
+      twitter: "patrickc",
+      newsletters: "https://patrickcollison.com/atom.xml",
+    },
+  },
+];
+
 const Sources = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
   const [testingAggregator, setTestingAggregator] = useState(false);
+  const [platformIdentifierInputs, setPlatformIdentifierInputs] = useState<Record<string, Record<string, string>>>({});
   const { toast } = useToast();
   
   const {
@@ -39,48 +348,44 @@ const Sources = () => {
     isInfluencerAdded
   } = useInfluencerSources();
 
-  // Influencers list - financial experts and thought leaders
-  const influencers = [
-    // Crypto & Bitcoin
-    { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
-    { id: "anthony-pompliano", name: "Anthony Pompliano", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    { id: "michael-saylor", name: "Michael Saylor", platform: "Twitter", followers: "3.1M", category: "Bitcoin" },
-    { id: "balaji-srinivasan", name: "Balaji Srinivasan", platform: "Twitter", followers: "920K", category: "Tech" },
-    { id: "coin-bureau", name: "Coin Bureau (Guy)", platform: "YouTube", followers: "2.1M", category: "Crypto" },
-    { id: "benjamin-cowen", name: "Benjamin Cowen", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    
-    // Traditional Finance & Macro
-    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
-    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
-    { id: "ray-dalio", name: "Ray Dalio", platform: "LinkedIn", followers: "3.2M", category: "Macro" },
-    { id: "howard-marks", name: "Howard Marks", platform: "Oaktree Capital", followers: "890K", category: "Investing" },
-    { id: "warren-buffett", name: "Warren Buffett", platform: "Berkshire Hathaway", followers: "4.2M", category: "Investing" },
-    { id: "bill-ackman", name: "Bill Ackman", platform: "Twitter", followers: "1.2M", category: "Investing" },
-    
-    // Tech & Innovation
-    { id: "elon-musk", name: "Elon Musk", platform: "Twitter", followers: "150M", category: "Tech" },
-    { id: "sam-altman", name: "Sam Altman", platform: "OpenAI", followers: "2.1M", category: "AI" },
-    { id: "jensen-huang", name: "Jensen Huang", platform: "NVIDIA", followers: "680K", category: "AI" },
-    { id: "lex-fridman", name: "Lex Fridman", platform: "MIT/Podcast", followers: "2.8M", category: "AI" },
-    
-    // Venture Capital
-    { id: "marc-andreessen", name: "Marc Andreessen", platform: "a16z", followers: "1.8M", category: "VC" },
-    { id: "naval-ravikant", name: "Naval Ravikant", platform: "AngelList", followers: "2.1M", category: "VC" },
-    { id: "chamath-palihapitiya", name: "Chamath Palihapitiya", platform: "Social Capital", followers: "1.6M", category: "VC" },
-    { id: "peter-thiel", name: "Peter Thiel", platform: "Founders Fund", followers: "1.1M", category: "VC" },
-    
-    // Economics & Policy
-    { id: "paul-krugman", name: "Paul Krugman", platform: "New York Times", followers: "5.2M", category: "Economics" },
-    { id: "janet-yellen", name: "Janet Yellen", platform: "US Treasury", followers: "1.8M", category: "Policy" },
-    { id: "jerome-powell", name: "Jerome Powell", platform: "Federal Reserve", followers: "2.1M", category: "Policy" },
-    
-    // Fintech
-    { id: "brian-armstrong", name: "Brian Armstrong", platform: "Coinbase", followers: "1.8M", category: "Fintech" },
-    { id: "jack-dorsey", name: "Jack Dorsey", platform: "Block (Square)", followers: "5.8M", category: "Fintech" },
-    { id: "patrick-collison", name: "Patrick Collison", platform: "Stripe", followers: "680K", category: "Fintech" },
-  ];
+  const getInfluencerDefaults = (influencerId: string): PlatformIdentifierMap => {
+    return influencerCatalog.find(influencer => influencer.id === influencerId)?.defaultPlatformIdentifiers || {};
+  };
 
-  const filteredInfluencers = influencers.filter(influencer => 
+  const buildDefaultIdentifiers = (influencerId: string, platforms: string[]): Record<string, string> => {
+    const defaults = getInfluencerDefaults(influencerId);
+    const existing = platformIdentifierInputs[influencerId] || {};
+
+    return platforms.reduce((acc, platform) => {
+      const defaultValue = existing[platform] ?? defaults[platform] ?? '';
+      acc[platform] = defaultValue.trim();
+      return acc;
+    }, {} as Record<string, string>);
+  };
+
+  useEffect(() => {
+    setPlatformIdentifierInputs(() => {
+      const next: Record<string, Record<string, string>> = {};
+
+      influencerSources.forEach(source => {
+        const defaults = getInfluencerDefaults(source.influencer_id);
+        const currentIdentifiers = source.platform_identifiers || {};
+        const combined: Record<string, string> = { ...currentIdentifiers };
+
+        source.selected_platforms.forEach(platform => {
+          if (combined[platform] === undefined) {
+            combined[platform] = defaults[platform] ?? '';
+          }
+        });
+
+        next[source.influencer_id] = combined;
+      });
+
+      return next;
+    });
+  }, [influencerSources]);
+
+  const filteredInfluencers = influencerCatalog.filter(influencer =>
     influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     influencer.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     influencer.platform.toLowerCase().includes(searchTerm.toLowerCase())
@@ -108,16 +413,64 @@ const Sources = () => {
     }
   };
 
+  const getPlatformPlaceholder = (platform: string) => {
+    switch (platform) {
+      case 'youtube':
+        return 'YouTube channel ID or URL';
+      case 'twitter':
+        return 'Twitter/X handle';
+      case 'podcasts':
+        return 'Podcast RSS feed URL';
+      case 'substack':
+        return 'Substack feed URL';
+      case 'newsletters':
+        return 'Newsletter RSS feed URL';
+      default:
+        return 'Platform identifier';
+    }
+  };
+
   const handlePlatformToggle = async (influencerId: string, influencerName: string, platform: string) => {
     const currentPlatforms = getInfluencerPlatforms(influencerId);
-    const newPlatforms = currentPlatforms.includes(platform)
-      ? currentPlatforms.filter(p => p !== platform)
-      : [...currentPlatforms, platform];
-    
+    const isAdding = !currentPlatforms.includes(platform);
+    const newPlatforms = isAdding
+      ? [...currentPlatforms, platform]
+      : currentPlatforms.filter(p => p !== platform);
+
+    const updatedIdentifiers = buildDefaultIdentifiers(influencerId, newPlatforms);
+    setPlatformIdentifierInputs(prev => ({
+      ...prev,
+      [influencerId]: updatedIdentifiers,
+    }));
+
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms);
+      await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms, updatedIdentifiers);
     } catch (error) {
       console.error('Error updating platforms:', error);
+    }
+  };
+
+  const handleIdentifierChange = (influencerId: string, platform: string, value: string) => {
+    setPlatformIdentifierInputs(prev => ({
+      ...prev,
+      [influencerId]: {
+        ...(prev[influencerId] || {}),
+        [platform]: value,
+      },
+    }));
+  };
+
+  const handleIdentifierBlur = async (
+    influencerId: string,
+    influencerName: string,
+    selectedPlatforms: string[]
+  ) => {
+    const identifiers = buildDefaultIdentifiers(influencerId, selectedPlatforms);
+
+    try {
+      await addOrUpdateInfluencerSource(influencerId, influencerName, selectedPlatforms, identifiers);
+    } catch (error) {
+      console.error('Error saving platform identifier:', error);
     }
   };
 
@@ -125,6 +478,10 @@ const Sources = () => {
     try {
       await removeInfluencerSource(influencerId);
       setEditingInfluencer(null);
+      setPlatformIdentifierInputs(prev => {
+        const { [influencerId]: _removed, ...rest } = prev;
+        return rest;
+      });
     } catch (error) {
       console.error('Error removing influencer:', error);
     }
@@ -132,7 +489,12 @@ const Sources = () => {
 
   const handleSelectAllPlatforms = async (influencerId: string, influencerName: string) => {
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms]);
+      const identifiers = buildDefaultIdentifiers(influencerId, [...availablePlatforms]);
+      setPlatformIdentifierInputs(prev => ({
+        ...prev,
+        [influencerId]: identifiers,
+      }));
+      await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms], identifiers);
     } catch (error) {
       console.error('Error selecting all platforms:', error);
     }
@@ -140,9 +502,14 @@ const Sources = () => {
 
   const handleSelectAllInfluencers = async () => {
     try {
-      for (const influencer of influencers) {
+      for (const influencer of influencerCatalog) {
         if (!isInfluencerAdded(influencer.id)) {
-          await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms]);
+          const defaultIdentifiers = buildDefaultIdentifiers(influencer.id, availablePlatforms);
+          setPlatformIdentifierInputs(prev => ({
+            ...prev,
+            [influencer.id]: defaultIdentifiers,
+          }));
+          await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms], defaultIdentifiers);
         }
       }
     } catch (error) {
@@ -210,7 +577,7 @@ const Sources = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {influencerSources.map((source) => {
-                const influencer = influencers.find(inf => inf.id === source.influencer_id);
+                const influencer = influencerCatalog.find(inf => inf.id === source.influencer_id);
                 const isEditing = editingInfluencer === source.influencer_id;
                 
                 return (
@@ -276,6 +643,55 @@ const Sources = () => {
                         })}
                       </div>
                     </div>
+
+                    {source.selected_platforms.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div className="text-sm font-medium text-muted-foreground">Platform identifiers</div>
+                        <div className="grid gap-3">
+                          {source.selected_platforms.map((platform) => {
+                            const identifiers = platformIdentifierInputs[source.influencer_id] || {};
+                            const value = identifiers[platform] ?? '';
+                            const defaults = getInfluencerDefaults(source.influencer_id);
+                            const defaultValue = (defaults[platform] ?? '').trim();
+                            const trimmedValue = value.trim();
+                            const helperText = trimmedValue
+                              ? defaultValue && trimmedValue === defaultValue
+                                ? `Using default identifier (${defaultValue}).`
+                                : 'Using custom identifier.'
+                              : defaultValue
+                                ? `Default: ${defaultValue}`
+                                : `Provide the ${platform} handle or feed URL to aggregate content.`;
+
+                            return (
+                              <div
+                                key={`${source.influencer_id}-${platform}-identifier`}
+                                className="grid gap-1"
+                              >
+                                <Label className="text-xs font-medium capitalize text-muted-foreground">
+                                  {platform} identifier
+                                </Label>
+                                <Input
+                                  value={value}
+                                  onChange={(event) =>
+                                    handleIdentifierChange(source.influencer_id, platform, event.target.value)
+                                  }
+                                  onBlur={() =>
+                                    handleIdentifierBlur(
+                                      source.influencer_id,
+                                      source.influencer_name,
+                                      source.selected_platforms
+                                    )
+                                  }
+                                  disabled={!isEditing}
+                                  placeholder={getPlatformPlaceholder(platform)}
+                                />
+                                <p className="text-xs text-muted-foreground">{helperText}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -357,7 +773,21 @@ const Sources = () => {
                         )}
                       </div>
                     </div>
-                    
+
+                    {Object.entries(influencer.defaultPlatformIdentifiers).length > 0 && (
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div>Default identifiers:</div>
+                        <div className="space-y-1">
+                          {Object.entries(influencer.defaultPlatformIdentifiers).map(([platform, identifier]) => (
+                            <div key={platform} className="flex flex-wrap gap-1">
+                              <span className="capitalize font-medium">{platform}:</span>
+                              <span className="font-mono break-all">{identifier}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Platform Selection */}
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-muted-foreground">Select Content Platforms:</div>
