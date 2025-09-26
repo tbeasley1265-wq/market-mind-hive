@@ -9,6 +9,7 @@ export interface InfluencerSource {
   influencer_id: string;
   influencer_name: string;
   selected_platforms: string[];
+  platform_identifiers: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,9 +50,10 @@ export function useInfluencerSources() {
   };
 
   const addOrUpdateInfluencerSource = async (
-    influencerId: string, 
-    influencerName: string, 
-    selectedPlatforms: string[]
+    influencerId: string,
+    influencerName: string,
+    selectedPlatforms: string[],
+    platformIdentifiers: Record<string, string> = {}
   ) => {
     if (!user) throw new Error('User not authenticated');
 
@@ -62,7 +64,8 @@ export function useInfluencerSources() {
           user_id: user.id,
           influencer_id: JSON.stringify(influencerId), // Store URLs as JSON string
           influencer_name: influencerName,
-          selected_platforms: selectedPlatforms
+          selected_platforms: selectedPlatforms,
+          platform_identifiers: platformIdentifiers
         }, {
           onConflict: 'user_id,influencer_name' // Use name instead of id for conflict resolution
         })
