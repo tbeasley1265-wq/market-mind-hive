@@ -53,6 +53,68 @@ serve(async (req) => {
 
     console.log(`Starting content aggregation for user: ${user.id}`);
 
+    const toErrorMessage = (value: unknown): string | null => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (value instanceof Error) {
+        return value.message;
+      }
+      if (typeof value === 'object') {
+        const message = (value as { message?: unknown }).message;
+        if (typeof message === 'string') {
+          return message;
+        }
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return String(value);
+        }
+      }
+      return String(value);
+    };
+
+    const extractInvokeError = (response: unknown): string | null => {
+      if (!response || typeof response !== 'object') {
+        return null;
+      }
+      const { error } = response as { error?: unknown };
+      const directError = toErrorMessage(error);
+      if (directError) {
+        return directError;
+      }
+      const { data } = response as { data?: unknown };
+      if (data && typeof data === 'object') {
+        return toErrorMessage((data as { error?: unknown }).error);
+      }
+      return null;
+    };
+
+    const extractInvokeData = (response: unknown): Record<string, unknown> | null => {
+      if (!response || typeof response !== 'object') {
+        return null;
+      }
+      const { data } = response as { data?: unknown };
+      if (!data || typeof data !== 'object') {
+        return null;
+      }
+      const record = data as Record<string, unknown>;
+      const nested = record.data;
+      if (nested && typeof nested === 'object') {
+        return nested as Record<string, unknown>;
+      }
+      return record;
+    };
+
+    type ProcessedContentData = {
+      summary?: string | null;
+      tags?: string[];
+      sentiment?: string | null;
+    };
+
     // Enhanced platform detection functions
     const detectPlatformFromUrl = (url: string): string => {
       if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
@@ -98,7 +160,7 @@ serve(async (req) => {
     console.log(`Found ${influencerSources?.length || 0} influencer sources`);
 
     let processedCount = 0;
-    const results: any[] = [];
+    const results: Array<Record<string, unknown>> = [];
 
     // Process each influencer source
     for (const source of influencerSources || []) {
@@ -114,8 +176,8 @@ serve(async (req) => {
             // Extract channel ID - assume influencer_id is the channel ID or URL
             let channelId = source.influencer_id;
             if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
+              const channelMatch = source.influencer_id.match(/channel\/([^/?]+)/);
+              const userMatch = source.influencer_id.match(/user\/([^/?]+)/);
               if (channelMatch) {
                 channelId = channelMatch[1];
               } else if (userMatch) {
@@ -153,7 +215,18 @@ serve(async (req) => {
                     }
                   });
 
-                  if (videoResponse.data?.success) {
+                  const videoError = extractInvokeError(videoResponse);
+
+                  if (videoError) {
+                    results.push({
+                      type: 'youtube',
+                      title: item.snippet.title,
+                      author: item.snippet.channelTitle,
+                      url: videoUrl,
+                      status: 'error',
+                      error: videoError
+                    });
+                  } else {
                     processedCount++;
                     results.push({
                       type: 'youtube',
@@ -174,7 +247,7 @@ serve(async (req) => {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
           
           // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
+          const feedUrl = source.influencer_id;
           
           try {
             const feedResponse = await fetch(feedUrl);
@@ -292,69 +365,79 @@ serve(async (req) => {
                          }
                        });
 
-                      if (contentResponse.data?.success) {
-                        const processedData = contentResponse.data.data;
-                        
-                        // Extract guests from transcript (simple pattern matching)
-                        const guests: string[] = [];
-                        const guestPatterns = [
-                          /(?:with|featuring|guest|joined by)\s+([A-Z][a-zA-Z\s]+)/gi,
-                          /([A-Z][a-zA-Z\s]+)(?:\s+joins?\s+us|\s+is\s+here)/gi
-                        ];
-                        
-                        for (const pattern of guestPatterns) {
-                          const matches = transcript.match(pattern);
-                          if (matches) {
-                            guests.push(...matches.map(m => m.replace(/^(with|featuring|guest|joined by)\s+/i, '').trim()));
-                          }
-                        }
-                        
-                        // Remove duplicates and clean up
-                        const uniqueGuests = [...new Set(guests)]
-                          .filter(g => g.length > 2 && g.length < 50)
-                          .slice(0, 5); // Limit to 5 guests
-                        
+                       const contentError = extractInvokeError(contentResponse);
+                       const processedData = (extractInvokeData(contentResponse) ?? {}) as ProcessedContentData;
+
+                       if (contentError) {
+                         results.push({
+                           type: 'podcast',
+                           title: title,
+                           author: detectedAuthor,
+                           url: episodeUrl,
+                           status: 'error',
+                           error: contentError
+                         });
+                       } else {
+                         // Extract guests from transcript (simple pattern matching)
+                         const guests: string[] = [];
+                         const guestPatterns = [
+                           /(?:with|featuring|guest|joined by)\s+([A-Z][a-zA-Z\s]+)/gi,
+                           /([A-Z][a-zA-Z\s]+)(?:\s+joins?\s+us|\s+is\s+here)/gi
+                         ];
+
+                         for (const pattern of guestPatterns) {
+                           const matches = transcript.match(pattern);
+                           if (matches) {
+                             guests.push(...matches.map(m => m.replace(/^(with|featuring|guest|joined by)\s+/i, '').trim()));
+                           }
+                         }
+
+                         // Remove duplicates and clean up
+                         const uniqueGuests = [...new Set(guests)]
+                           .filter(g => g.length > 2 && g.length < 50)
+                           .slice(0, 5); // Limit to 5 guests
+
                          // Store in podcast_episodes table
                          const { error: insertError } = await supabaseClient
                            .from('podcast_episodes')
                            .insert({
                              user_id: user.id,
                              podcast_name: detectedAuthor,
-                            episode_title: title,
-                            episode_url: episodeUrl,
-                            audio_url: audioUrl,
-                            published_date: publishedDate,
-                            duration: duration || null,
-                            description: description,
-                            transcript: transcript,
-                            summary: processedData.summary,
-                            guests: uniqueGuests,
-                            tags: processedData.tags || [],
-                            sentiment: processedData.sentiment
-                          });
-                        
-                        if (insertError) {
-                          throw insertError;
-                        }
-                        
-                        processedCount++;
+                             episode_title: title,
+                             episode_url: episodeUrl,
+                             audio_url: audioUrl,
+                             published_date: publishedDate,
+                             duration: duration || null,
+                             description: description,
+                             transcript: transcript,
+                             summary: processedData.summary ?? null,
+                             guests: uniqueGuests,
+                             tags: processedData.tags || [],
+                             sentiment: processedData.sentiment ?? null
+                           });
+
+                         if (insertError) {
+                           throw insertError;
+                         }
+
+                         processedCount++;
                          results.push({
                            type: 'podcast',
                            title: title,
                            author: detectedAuthor,
-                          url: episodeUrl,
-                          status: 'processed',
-                          transcript_length: transcript.length,
-                          guests: uniqueGuests
-                        });
-                      }
+                           url: episodeUrl,
+                           status: 'processed',
+                           transcript_length: transcript.length,
+                           guests: uniqueGuests
+                         });
+                       }
                     } catch (episodeError) {
                       console.error(`Error processing podcast episode ${title}:`, episodeError);
                       const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
-                         results.push({
-                           type: 'podcast',
-                           title: title,
-                           author: source.influencer_name,
+                      results.push({
+                        type: 'podcast',
+                        title: title,
+                        author: source.influencer_name,
                         url: episodeUrl,
                         status: 'error',
                         error: errorMessage
@@ -420,7 +503,18 @@ serve(async (req) => {
                       }
                     });
 
-                    if (contentResponse.data?.success) {
+                    const contentError = extractInvokeError(contentResponse);
+
+                    if (contentError) {
+                      results.push({
+                        type: 'newsletter',
+                        title: title,
+                        author: source.influencer_name,
+                        url: link,
+                        status: 'error',
+                        error: contentError
+                      });
+                    } else {
                       processedCount++;
                       results.push({
                         type: 'newsletter',
