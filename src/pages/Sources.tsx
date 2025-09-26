@@ -42,42 +42,63 @@ const Sources = () => {
   // Influencers list - financial experts and thought leaders
   const influencers = [
     // Crypto & Bitcoin
-    { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
-    { id: "anthony-pompliano", name: "Anthony Pompliano", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    { id: "michael-saylor", name: "Michael Saylor", platform: "Twitter", followers: "3.1M", category: "Bitcoin" },
-    { id: "balaji-srinivasan", name: "Balaji Srinivasan", platform: "Twitter", followers: "920K", category: "Tech" },
-    { id: "coin-bureau", name: "Coin Bureau (Guy)", platform: "YouTube", followers: "2.1M", category: "Crypto" },
-    { id: "benjamin-cowen", name: "Benjamin Cowen", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    
-    // Traditional Finance & Macro
-    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
-    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
-    { id: "ray-dalio", name: "Ray Dalio", platform: "LinkedIn", followers: "3.2M", category: "Macro" },
-    { id: "howard-marks", name: "Howard Marks", platform: "Oaktree Capital", followers: "890K", category: "Investing" },
-    { id: "warren-buffett", name: "Warren Buffett", platform: "Berkshire Hathaway", followers: "4.2M", category: "Investing" },
-    { id: "bill-ackman", name: "Bill Ackman", platform: "Twitter", followers: "1.2M", category: "Investing" },
-    
-    // Tech & Innovation
-    { id: "elon-musk", name: "Elon Musk", platform: "Twitter", followers: "150M", category: "Tech" },
-    { id: "sam-altman", name: "Sam Altman", platform: "OpenAI", followers: "2.1M", category: "AI" },
-    { id: "jensen-huang", name: "Jensen Huang", platform: "NVIDIA", followers: "680K", category: "AI" },
-    { id: "lex-fridman", name: "Lex Fridman", platform: "MIT/Podcast", followers: "2.8M", category: "AI" },
-    
-    // Venture Capital
-    { id: "marc-andreessen", name: "Marc Andreessen", platform: "a16z", followers: "1.8M", category: "VC" },
-    { id: "naval-ravikant", name: "Naval Ravikant", platform: "AngelList", followers: "2.1M", category: "VC" },
-    { id: "chamath-palihapitiya", name: "Chamath Palihapitiya", platform: "Social Capital", followers: "1.6M", category: "VC" },
-    { id: "peter-thiel", name: "Peter Thiel", platform: "Founders Fund", followers: "1.1M", category: "VC" },
-    
-    // Economics & Policy
-    { id: "paul-krugman", name: "Paul Krugman", platform: "New York Times", followers: "5.2M", category: "Economics" },
-    { id: "janet-yellen", name: "Janet Yellen", platform: "US Treasury", followers: "1.8M", category: "Policy" },
-    { id: "jerome-powell", name: "Jerome Powell", platform: "Federal Reserve", followers: "2.1M", category: "Policy" },
-    
-    // Fintech
-    { id: "brian-armstrong", name: "Brian Armstrong", platform: "Coinbase", followers: "1.8M", category: "Fintech" },
-    { id: "jack-dorsey", name: "Jack Dorsey", platform: "Block (Square)", followers: "5.8M", category: "Fintech" },
-    { id: "patrick-collison", name: "Patrick Collison", platform: "Stripe", followers: "680K", category: "Fintech" },
+    { 
+      id: "raoul-pal", 
+      name: "Raoul Pal", 
+      platform: "Real Vision", 
+      followers: "1.2M", 
+      category: "Macro",
+      urls: {
+        youtube: "UCJ9m8jMgFo-BOmNVYdb_LQQ",
+        podcasts: "https://feeds.megaphone.fm/realvision",
+        newsletters: "https://www.realvision.com/feed"
+      }
+    },
+    { 
+      id: "anthony-pompliano", 
+      name: "Anthony Pompliano", 
+      platform: "YouTube", 
+      followers: "1.8M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
+        podcasts: "https://feeds.simplecast.com/7y1CbAbN",
+        newsletters: "https://pomp.substack.com/feed"
+      }
+    },
+    { 
+      id: "lex-fridman", 
+      name: "Lex Fridman", 
+      platform: "MIT/Podcast", 
+      followers: "2.8M", 
+      category: "AI",
+      urls: {
+        youtube: "UCSHZKyawb77ixDdsGog4iWA",
+        podcasts: "https://lexfridman.com/feed/podcast/",
+        newsletters: "https://lexfridman.com/feed/"
+      }
+    },
+    { 
+      id: "coin-bureau", 
+      name: "Coin Bureau (Guy)", 
+      platform: "YouTube", 
+      followers: "2.1M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
+        newsletters: "https://coinbureau.com/feed/"
+      }
+    },
+    { 
+      id: "benjamin-cowen", 
+      name: "Benjamin Cowen", 
+      platform: "YouTube", 
+      followers: "1.8M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCRvqjQPSeaWn-uEx-w0XOIg"
+      }
+    }
   ];
 
   const filteredInfluencers = influencers.filter(influencer => 
@@ -108,22 +129,22 @@ const Sources = () => {
     }
   };
 
-  const handlePlatformToggle = async (influencerId: string, influencerName: string, platform: string) => {
-    const currentPlatforms = getInfluencerPlatforms(influencerId);
+  const handlePlatformToggle = async (influencer: any, platform: string) => {
+    const currentPlatforms = getInfluencerPlatforms(influencer.name);
     const newPlatforms = currentPlatforms.includes(platform)
       ? currentPlatforms.filter(p => p !== platform)
       : [...currentPlatforms, platform];
     
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms);
+      await addOrUpdateInfluencerSource(influencer.urls || {}, influencer.name, newPlatforms);
     } catch (error) {
       console.error('Error updating platforms:', error);
     }
   };
 
-  const handleRemoveInfluencer = async (influencerId: string) => {
+  const handleRemoveInfluencer = async (influencerName: string) => {
     try {
-      await removeInfluencerSource(influencerId);
+      await removeInfluencerSource(influencerName);
       setEditingInfluencer(null);
     } catch (error) {
       console.error('Error removing influencer:', error);
@@ -237,7 +258,7 @@ const Sources = () => {
                           size="sm"
                           variant="ghost"
                           className="text-destructive"
-                          onClick={() => handleRemoveInfluencer(source.influencer_id)}
+                          onClick={() => handleRemoveInfluencer(source.influencer_name)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -258,9 +279,16 @@ const Sources = () => {
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
                                 disabled={!isEditing}
-                                onCheckedChange={() => 
-                                  isEditing && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
-                                }
+                                 onCheckedChange={() => {
+                                   if (isEditing) {
+                                     // Create influencer object from source data
+                                     const influencer = {
+                                       name: source.influencer_name,
+                                       urls: JSON.parse(source.influencer_id)
+                                     };
+                                     handlePlatformToggle(influencer, platform);
+                                   }
+                                 }}
                               />
                               <Label 
                                 htmlFor={`${source.influencer_id}-${platform}`}
@@ -326,8 +354,8 @@ const Sources = () => {
             {/* Available Influencers */}
             <div className="grid gap-4 max-h-96 overflow-y-auto">
               {filteredInfluencers.map((influencer) => {
-                const isAdded = isInfluencerAdded(influencer.id);
-                const selectedPlatforms = getInfluencerPlatforms(influencer.id);
+                const isAdded = isInfluencerAdded(influencer.name);
+                const selectedPlatforms = getInfluencerPlatforms(influencer.name);
                 
                 return (
                   <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
@@ -372,7 +400,7 @@ const Sources = () => {
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
                                 onCheckedChange={() => 
-                                  handlePlatformToggle(influencer.id, influencer.name, platform)
+                                  handlePlatformToggle(influencer, platform)
                                 }
                               />
                               <Label 

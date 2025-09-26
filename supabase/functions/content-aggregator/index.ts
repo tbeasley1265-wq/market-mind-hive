@@ -100,29 +100,27 @@ serve(async (req) => {
     let processedCount = 0;
     const results: any[] = [];
 
-    // Process each influencer source
-    for (const source of influencerSources || []) {
+    // Process each influencer source (limit to 2 to avoid memory issues)
+    for (const source of (influencerSources || []).slice(0, 2)) {
       console.log(`Processing source: ${source.influencer_name}`);
       
       try {
+        // Parse the influencer_id as JSON to get URLs
+        let sourceUrls: any = {};
+        try {
+          sourceUrls = JSON.parse(source.influencer_id);
+        } catch {
+          console.log(`Skipping ${source.influencer_name} - invalid URL data format`);
+          continue;
+        }
+
         // Process YouTube content
-        if (source.selected_platforms.includes('youtube')) {
+        if (source.selected_platforms.includes('youtube') && sourceUrls.youtube) {
           const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
           if (YOUTUBE_API_KEY) {
             console.log(`Fetching YouTube content for ${source.influencer_name}`);
             
-            // Extract channel ID - assume influencer_id is the channel ID or URL
-            let channelId = source.influencer_id;
-            if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
-              if (channelMatch) {
-                channelId = channelMatch[1];
-              } else if (userMatch) {
-                // For user URLs, we'd need to convert to channel ID via API
-                channelId = userMatch[1];
-              }
-            }
+            const channelId = sourceUrls.youtube;
             
             const searchResponse = await fetch(
               `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=3`
@@ -170,11 +168,10 @@ serve(async (req) => {
         }
 
         // Process Podcast content
-        if (source.selected_platforms.includes('podcasts')) {
+        if (source.selected_platforms.includes('podcasts') && sourceUrls.podcasts) {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
           
-          // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
+          const feedUrl = sourceUrls.podcasts;
           
           try {
             const feedResponse = await fetch(feedUrl);
@@ -369,15 +366,11 @@ serve(async (req) => {
           }
         }
 
-        // Process Substack/Newsletter content
-        if (source.selected_platforms.includes('substack') || source.selected_platforms.includes('newsletters')) {
+        // Process Newsletter/Substack content
+        if ((source.selected_platforms.includes('newsletters') || source.selected_platforms.includes('substack')) && sourceUrls.newsletters) {
           console.log(`Fetching newsletter content for ${source.influencer_name}`);
           
-          // Construct RSS feed URL
-          let feedUrl = source.influencer_id;
-          if (source.influencer_id.includes('substack.com') && !source.influencer_id.includes('/feed')) {
-            feedUrl = source.influencer_id.replace(/\/$/, '') + '/feed';
-          }
+          const feedUrl = sourceUrls.newsletters;
           
           try {
             const feedResponse = await fetch(feedUrl);
