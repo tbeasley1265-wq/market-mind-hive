@@ -3,19 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Youtube, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Youtube, Loader2, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
+import type { VideoProcessingResponse } from "@/types/content";
+
 interface VideoProcessorProps {
-  onContentProcessed?: (content: any) => void;
+  onContentProcessed?: (content: VideoProcessingResponse) => void;
 }
 
 const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
   const [videoUrl, setVideoUrl] = useState('');
   const [summaryLength, setSummaryLength] = useState('standard');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedContent, setProcessedContent] = useState<any>(null);
+  const [processedContent, setProcessedContent] = useState<VideoProcessingResponse | null>(null);
   const { toast } = useToast();
 
   const handleProcessVideo = async () => {
@@ -40,7 +42,7 @@ const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
     setIsProcessing(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('video-summarizer', {
+      const { data, error } = await supabase.functions.invoke<VideoProcessingResponse>('video-summarizer', {
         body: {
           videoUrl,
           summaryLength
@@ -49,8 +51,10 @@ const VideoProcessor = ({ onContentProcessed }: VideoProcessorProps) => {
 
       if (error) throw error;
 
-      setProcessedContent(data);
-      onContentProcessed?.(data);
+      if (data) {
+        setProcessedContent(data);
+        onContentProcessed?.(data);
+      }
       
       toast({
         title: "Success",

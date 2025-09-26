@@ -2,6 +2,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
+type GmailHeader = { name?: string; value?: string };
+type GmailPart = { mimeType?: string; body?: { data?: string }; parts?: GmailPart[] };
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -164,18 +167,18 @@ serve(async (req) => {
 
           if (emailResponse.ok) {
             const emailData = await emailResponse.json();
-            const headers = emailData.payload.headers;
-            
-            const subject = headers.find((h: any) => h.name === 'Subject')?.value || 'No Subject';
-            const from = headers.find((h: any) => h.name === 'From')?.value || 'Unknown';
-            const date = headers.find((h: any) => h.name === 'Date')?.value;
-            
+            const headers = (emailData.payload.headers ?? []) as GmailHeader[];
+
+            const subject = headers.find((header) => header.name === 'Subject')?.value || 'No Subject';
+            const from = headers.find((header) => header.name === 'From')?.value || 'Unknown';
+            const date = headers.find((header) => header.name === 'Date')?.value;
+
             // Extract email body (simplified)
             let body = '';
             if (emailData.payload.body?.data) {
               body = atob(emailData.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
             } else if (emailData.payload.parts) {
-              for (const part of emailData.payload.parts) {
+              for (const part of emailData.payload.parts as GmailPart[]) {
                 if (part.mimeType === 'text/plain' && part.body?.data) {
                   body = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
                   break;

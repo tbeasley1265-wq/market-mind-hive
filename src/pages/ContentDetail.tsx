@@ -167,7 +167,7 @@ const ContentDetail = () => {
         if (error) throw error;
 
         // Parse metadata to extract additional fields
-        const metadata = data.metadata as any || {};
+        const metadata = (data.metadata as Record<string, unknown> | null) ?? {};
         const enrichedContent: ContentItem = {
           ...data,
           source: metadata.source || data.platform,

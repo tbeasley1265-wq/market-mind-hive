@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +29,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useFolders } from "@/hooks/useFolders";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+import type { ContentItemRow, FolderRow } from "@/types/content";
+
+type ContentItemWithFolder = ContentItemRow & {
+  folders: Pick<FolderRow, "name" | "color"> | null;
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -39,8 +45,8 @@ const Dashboard = () => {
   const [showDocumentUpload, setShowDocumentUpload] = useState(false);
   const [showUploadSourcesModal, setShowUploadSourcesModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
-  const [editingFolder, setEditingFolder] = useState<any>(null);
-  const [contentItems, setContentItems] = useState<any[]>([]);
+  const [editingFolder, setEditingFolder] = useState<FolderRow | null>(null);
+  const [contentItems, setContentItems] = useState<ContentItemWithFolder[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -67,7 +73,7 @@ const Dashboard = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setContentItems(data || []);
+        setContentItems((data as ContentItemWithFolder[]) || []);
       } catch (error) {
         console.error('Error fetching content:', error);
       } finally {
@@ -87,7 +93,7 @@ const Dashboard = () => {
     setShowFolderModal(true);
   };
 
-  const handleEditFolder = (folder: any) => {
+  const handleEditFolder = (folder: FolderRow) => {
     setEditingFolder(folder);
     setShowFolderModal(true);
   };
@@ -117,60 +123,13 @@ const Dashboard = () => {
       .select('*, folders(name, color)')
       .eq('user_id', user?.id)
       .order('created_at', { ascending: false });
-    
-    setContentItems(data || []);
+
+    setContentItems((data as ContentItemWithFolder[]) || []);
   };
 
-
-  const handleSave = async (title: string, content: any) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('content_items')
-        .insert({
-          user_id: user.id,
-          title: content.title,
-          content_type: content.platform || 'article',
-          platform: content.source || 'unknown',
-          author: content.author,
-          summary: content.summary,
-          metadata: {
-            tags: content.tags,
-            sentiment: content.sentiment,
-            originalUrl: content.originalUrl
-          },
-          original_url: content.originalUrl,
-          is_bookmarked: true
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Saved",
-        description: `"${title}" has been saved to your bookmarks.`,
-      });
-
-      // Refresh content items
-      const { data } = await supabase
-        .from('content_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      setContentItems(data || []);
-    } catch (error) {
-      console.error('Error saving content:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save content. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Use only real content from database
-  const allContent = contentItems.map(item => ({
+  const allContent = useMemo(() => contentItems.map(item => ({
     id: item.id,
     title: item.title,
     source: item.platform,
@@ -178,13 +137,14 @@ const Dashboard = () => {
     author: item.author || 'Unknown',
     timestamp: new Date(item.created_at).toLocaleString(),
     summary: item.summary || '',
-    tags: item.metadata?.tags || [],
+    tags: Array.isArray((item.metadata as { tags?: string[] } | null)?.tags) ?
+      ((item.metadata as { tags?: string[] } | null)?.tags ?? []) : [],
     originalUrl: item.original_url,
     isBookmarked: item.is_bookmarked,
     folderId: item.folder_id,
     folderName: item.folders?.name,
     folderColor: item.folders?.color
-  }));
+  })), [contentItems]);
 
   // Filter by folder first, then by content type
   const folderFilteredContent = selectedFolderId 

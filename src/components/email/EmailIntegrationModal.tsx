@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Loader2, CheckCircle, X } from "lucide-react";
+import { Mail, Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+import type { ProcessedEmailSummary } from "@/types/content";
 
 interface EmailIntegrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEmailsProcessed?: (emails: any[]) => void;
+  onEmailsProcessed?: (emails: ProcessedEmailSummary[]) => void;
 }
 
 const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailIntegrationModalProps) => {
@@ -19,20 +21,7 @@ const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailInte
   const [connectedAccounts, setConnectedAccounts] = useState<string[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (isOpen) {
-      checkConnectedAccounts();
-      // Check for OAuth callback
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      if (code && !sessionStorage.getItem('oauth_handled')) {
-        sessionStorage.setItem('oauth_handled', 'true');
-        handleOAuthCallback(code);
-      }
-    }
-  }, [isOpen]);
-
-  const checkConnectedAccounts = async () => {
+  const checkConnectedAccounts = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -49,9 +38,50 @@ const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailInte
     } catch (error) {
       console.error('Error checking connected accounts:', error);
     }
-  };
+  }, []);
 
-  const handleOAuthCallback = async (code: string) => {
+  const fetchEmails = useCallback(async () => {
+    setIsFetching(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase.functions.invoke<{ emails: ProcessedEmailSummary[] }>('gmail-integration', {
+        body: {
+          action: 'fetch_emails',
+          userId: user.id
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.emails?.length) {
+        onEmailsProcessed?.(data.emails);
+        toast({
+          title: "Success",
+          description: `Processed ${data.emails.length} research emails from your Gmail.`,
+        });
+        onClose();
+      } else {
+        toast({
+          title: "No New Emails",
+          description: "No new research emails found in your Gmail inbox.",
+        });
+      }
+    } catch (error) {
+      console.error('Email fetch error:', error);
+      const message = error instanceof Error ? error.message : "Failed to fetch emails. Please try again.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  }, [onClose, onEmailsProcessed, toast]);
+
+  const handleOAuthCallback = useCallback(async (code: string) => {
     setIsConnecting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -78,17 +108,30 @@ const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailInte
 
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (error: any) {
+    } catch (error) {
       console.error('OAuth callback error:', error);
+      const message = error instanceof Error ? error.message : "Failed to connect Gmail account. Please try again.";
       toast({
         title: "Error",
-        description: error.message || "Failed to connect Gmail account. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
       setIsConnecting(false);
     }
-  };
+  }, [fetchEmails, toast]);
+
+  useEffect(() => {
+    if (isOpen) {
+      checkConnectedAccounts();
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code && !sessionStorage.getItem('oauth_handled')) {
+        sessionStorage.setItem('oauth_handled', 'true');
+        void handleOAuthCallback(code);
+      }
+    }
+  }, [checkConnectedAccounts, handleOAuthCallback, isOpen]);
 
   const handleGmailConnect = async () => {
     try {
@@ -106,8 +149,8 @@ const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailInte
       sessionStorage.removeItem('oauth_handled');
 
       // Get OAuth URL from edge function
-      const { data, error } = await supabase.functions.invoke('gmail-integration', {
-        body: { 
+      const { data, error } = await supabase.functions.invoke<{ authUrl?: string }>('gmail-integration', {
+        body: {
           action: 'get_oauth_url',
           redirectUri: `${window.location.origin}/dashboard`
         }
@@ -120,52 +163,12 @@ const EmailIntegrationModal = ({ isOpen, onClose, onEmailsProcessed }: EmailInte
       } else {
         throw new Error('Failed to get OAuth URL');
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to initiate Gmail connection. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to initiate Gmail connection. Please try again.",
         variant: "destructive",
       });
-    }
-  };
-
-  const fetchEmails = async () => {
-    setIsFetching(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase.functions.invoke('gmail-integration', {
-        body: { 
-          action: 'fetch_emails',
-          userId: user.id
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.emails?.length > 0) {
-        onEmailsProcessed?.(data.emails);
-        toast({
-          title: "Success",
-          description: `Processed ${data.emails.length} research emails from your Gmail.`,
-        });
-        onClose();
-      } else {
-        toast({
-          title: "No New Emails",
-          description: "No new research emails found in your Gmail inbox.",
-        });
-      }
-    } catch (error: any) {
-      console.error('Email fetch error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch emails. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsFetching(false);
     }
   };
 

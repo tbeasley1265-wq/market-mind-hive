@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Function to extract video ID from YouTube URL
 function extractVideoId(url: string): string | null {
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const regex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/;
   const match = url.match(regex);
   return match ? match[1] : null;
 }
@@ -30,7 +30,8 @@ async function getYouTubeTranscript(videoId: string): Promise<string> {
     const description = descMatch ? descMatch[1] : '';
     
     // In a real implementation, you'd use the YouTube API or a transcript service
-    return `Title: ${title}\nDescription: ${description}`;
+    return `Title: ${title}
+Description: ${description}`;
   } catch (error) {
     console.error('Error fetching YouTube data:', error);
     throw new Error('Failed to fetch video content');
@@ -77,10 +78,10 @@ serve(async (req) => {
       videoContent = await getYouTubeTranscript(videoId);
       
       // Extract author from content (you might want to use YouTube API for better data)
-      const channelMatch = videoContent.match(/Channel: ([^\\n]+)/);
+      const channelMatch = videoContent.match(/Channel: ([^\n]+)/);
       author = channelMatch ? channelMatch[1] : 'Unknown';
-      
-      const titleMatch = videoContent.match(/Title: ([^\\n]+)/);
+
+      const titleMatch = videoContent.match(/Title: ([^\n]+)/);
       title = titleMatch ? titleMatch[1] : 'YouTube Video';
     } else {
       throw new Error('Currently only YouTube videos are supported');

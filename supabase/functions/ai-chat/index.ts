@@ -118,8 +118,16 @@ Full Content: ${contentData.full_content}
     }
 
     // Mock content data for development
+    interface MockContent {
+      title: string;
+      author: string;
+      platform: string;
+      summary: string;
+      full_content: string;
+    }
+
     function getMockContent(contentId: string) {
-      const mockData: Record<string, any> = {
+      const mockData: Record<string, MockContent> = {
         'mock-1': {
           title: "Crypto Market Analysis Q4 2024",
           author: "Alex Chen",

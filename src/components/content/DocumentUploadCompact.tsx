@@ -7,8 +7,10 @@ import { Upload, FileText, X, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+import type { DocumentProcessingResponse } from "@/types/content";
+
 interface DocumentUploadCompactProps {
-  onDocumentProcessed?: (result: any) => void;
+  onDocumentProcessed?: (result: DocumentProcessingResponse) => void;
 }
 
 const DocumentUploadCompact = ({ onDocumentProcessed }: DocumentUploadCompactProps) => {
@@ -78,7 +80,7 @@ const DocumentUploadCompact = ({ onDocumentProcessed }: DocumentUploadCompactPro
         setUploadProgress(50);
 
         // Call the document processing edge function
-        const { data, error } = await supabase.functions.invoke('document-summarizer', {
+        const { data, error } = await supabase.functions.invoke<DocumentProcessingResponse>('document-summarizer', {
           body: {
             fileName: selectedFile.name,
             fileType: selectedFile.type,
@@ -98,7 +100,9 @@ const DocumentUploadCompact = ({ onDocumentProcessed }: DocumentUploadCompactPro
           description: `"${selectedFile.name}" has been analyzed and summarized.`,
         });
 
-        onDocumentProcessed?.(data);
+        if (data) {
+          onDocumentProcessed?.(data);
+        }
         setSelectedFile(null);
         setIsOpen(false);
         

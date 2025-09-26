@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +21,7 @@ export function useInfluencerSources() {
   const [influencerSources, setInfluencerSources] = useState<InfluencerSource[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchInfluencerSources = async () => {
+  const fetchInfluencerSources = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
@@ -46,11 +46,11 @@ export function useInfluencerSources() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, user]);
 
-  const addOrUpdateInfluencerSource = async (
-    influencerId: string, 
-    influencerName: string, 
+  const addOrUpdateInfluencerSource = useCallback(async (
+    influencerId: string,
+    influencerName: string,
     selectedPlatforms: string[]
   ) => {
     if (!user) throw new Error('User not authenticated');
@@ -84,7 +84,7 @@ export function useInfluencerSources() {
         title: "Success",
         description: `${influencerName} source preferences updated successfully.`
       });
-      
+
       return data;
     } catch (error) {
       console.error('Error updating influencer source:', error);
@@ -95,9 +95,9 @@ export function useInfluencerSources() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
-  const removeInfluencerSource = async (influencerId: string) => {
+  const removeInfluencerSource = useCallback(async (influencerId: string) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -124,20 +124,20 @@ export function useInfluencerSources() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
-  const getInfluencerPlatforms = (influencerId: string): string[] => {
+  const getInfluencerPlatforms = useCallback((influencerId: string): string[] => {
     const source = influencerSources.find(source => source.influencer_id === influencerId);
     return source?.selected_platforms || [];
-  };
+  }, [influencerSources]);
 
-  const isInfluencerAdded = (influencerId: string): boolean => {
+  const isInfluencerAdded = useCallback((influencerId: string): boolean => {
     return influencerSources.some(source => source.influencer_id === influencerId);
-  };
+  }, [influencerSources]);
 
   useEffect(() => {
     fetchInfluencerSources();
-  }, [user]);
+  }, [fetchInfluencerSources]);
 
   return {
     influencerSources,

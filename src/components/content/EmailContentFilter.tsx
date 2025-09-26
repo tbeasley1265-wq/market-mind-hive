@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,11 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Calendar, Tag, TrendingUp, TrendingDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import type { EmailContent } from "@/types/content";
+
 interface EmailFilterProps {
-  emails: any[];
-  onFilteredEmailsChange: (emails: any[]) => void;
+  emails: EmailContent[];
+  onFilteredEmailsChange: (emails: EmailContent[]) => void;
 }
 
 const EmailContentFilter = ({ emails, onFilteredEmailsChange }: EmailFilterProps) => {
@@ -18,53 +20,77 @@ const EmailContentFilter = ({ emails, onFilteredEmailsChange }: EmailFilterProps
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Extract unique tags from all emails
-  const allTags = [...new Set(emails.flatMap(email => email.tags || []))];
-  
-  // Get sentiment counts
-  const sentimentCounts = {
-    bullish: emails.filter(e => e.sentiment === 'bullish').length,
-    bearish: emails.filter(e => e.sentiment === 'bearish').length,
-    neutral: emails.filter(e => e.sentiment === 'neutral').length,
-  };
+  const allTags = useMemo(
+    () => [...new Set(emails.flatMap(email => email.tags ?? []))],
+    [emails]
+  );
 
-  const filterEmails = () => {
-    let filtered = [...emails];
+  const sentimentCounts = useMemo(
+    () => ({
+      bullish: emails.filter(e => e.sentiment === 'bullish').length,
+      bearish: emails.filter(e => e.sentiment === 'bearish').length,
+      neutral: emails.filter(e => e.sentiment === 'neutral').length,
+    }),
+    [emails]
+  );
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(email => 
-        email.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.author?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+  useEffect(() => {
+    const filtered = emails.filter(email => {
+      const matchesSearch = searchQuery
+        ? [
+            email.title?.toLowerCase(),
+            email.summary?.toLowerCase(),
+            email.author?.toLowerCase(),
+          ].some(value => value?.includes(searchQuery.toLowerCase()))
+        : true;
 
-    // Sentiment filter
-    if (selectedSentiment !== "all") {
-      filtered = filtered.filter(email => email.sentiment === selectedSentiment);
-    }
+      if (!matchesSearch) {
+        return false;
+      }
 
-    // Tags filter
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(email => 
-        selectedTags.some(tag => email.tags?.includes(tag))
-      );
-    }
+      const matchesSentiment = selectedSentiment === "all" || email.sentiment === selectedSentiment;
 
-    // Timeframe filter (simplified - you might want to implement proper date filtering)
-    if (selectedTimeframe !== "all") {
-      // This would need proper date implementation based on your timestamp format
-      // For now, just showing the structure
-    }
+      if (!matchesSentiment) {
+        return false;
+      }
+
+      const matchesTimeframe = (() => {
+        if (selectedTimeframe === "all" || !email.timestamp) {
+          return true;
+        }
+
+        const parsedDate = new Date(email.timestamp);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return true;
+        }
+
+        const now = Date.now();
+        const difference = now - parsedDate.getTime();
+        switch (selectedTimeframe) {
+          case "24h":
+            return difference <= 24 * 60 * 60 * 1000;
+          case "7d":
+            return difference <= 7 * 24 * 60 * 60 * 1000;
+          case "30d":
+            return difference <= 30 * 24 * 60 * 60 * 1000;
+          default:
+            return true;
+        }
+      })();
+
+      if (!matchesTimeframe) {
+        return false;
+      }
+
+      if (selectedTags.length > 0) {
+        return selectedTags.some(tag => email.tags?.includes(tag));
+      }
+
+      return true;
+    });
 
     onFilteredEmailsChange(filtered);
-  };
-
-  // Apply filters whenever any filter changes
-  useEffect(() => {
-    filterEmails();
-  }, [searchQuery, selectedSentiment, selectedTimeframe, selectedTags, emails]);
+  }, [emails, onFilteredEmailsChange, searchQuery, selectedSentiment, selectedTags, selectedTimeframe]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 

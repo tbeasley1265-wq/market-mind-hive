@@ -1,6 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+interface AggregationResult {
+  type: 'youtube' | 'podcast' | 'newsletter';
+  title: string;
+  author: string;
+  url: string;
+  status: 'processed' | 'error';
+  transcript_length?: number;
+  guests?: string[];
+  error?: string;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -98,7 +109,7 @@ serve(async (req) => {
     console.log(`Found ${influencerSources?.length || 0} influencer sources`);
 
     let processedCount = 0;
-    const results: any[] = [];
+    const results: AggregationResult[] = [];
 
     // Process each influencer source
     for (const source of influencerSources || []) {
@@ -113,9 +124,9 @@ serve(async (req) => {
             
             // Extract channel ID - assume influencer_id is the channel ID or URL
             let channelId = source.influencer_id;
-            if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
-              const channelMatch = source.influencer_id.match(/channel\/([^\/\?]+)/);
-              const userMatch = source.influencer_id.match(/user\/([^\/\?]+)/);
+              if (source.influencer_id.includes('youtube.com') || source.influencer_id.includes('youtu.be')) {
+                const channelMatch = source.influencer_id.match(/channel\/([^/?]+)/);
+                const userMatch = source.influencer_id.match(/user\/([^/?]+)/);
               if (channelMatch) {
                 channelId = channelMatch[1];
               } else if (userMatch) {
@@ -174,7 +185,7 @@ serve(async (req) => {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
           
           // Construct podcast RSS feed URL
-          let feedUrl = source.influencer_id;
+          const feedUrl = source.influencer_id;
           
           try {
             const feedResponse = await fetch(feedUrl);

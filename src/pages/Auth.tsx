@@ -93,7 +93,7 @@ const Auth = () => {
     
     console.log(`Attempting ${provider} OAuth signin...`);
 
-    const authOptions: any = {
+    const authOptions: { redirectTo: string; scopes?: string } = {
       redirectTo: `${window.location.origin}/dashboard`
     };
 

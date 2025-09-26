@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +19,7 @@ export function useFolders() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchFolders = async () => {
+  const fetchFolders = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -41,9 +41,9 @@ export function useFolders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, user]);
 
-  const createFolder = async (name: string) => {
+  const createFolder = useCallback(async (name: string) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -63,7 +63,7 @@ export function useFolders() {
         title: "Success",
         description: `Folder "${name}" created successfully.`
       });
-      
+
       return data;
     } catch (error) {
       console.error('Error creating folder:', error);
@@ -74,9 +74,9 @@ export function useFolders() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
-  const updateFolder = async (id: string, updates: Partial<Pick<Folder, 'name' | 'color' | 'description'>>) => {
+  const updateFolder = useCallback(async (id: string, updates: Partial<Pick<Folder, 'name' | 'color' | 'description'>>) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -95,7 +95,7 @@ export function useFolders() {
         title: "Success",
         description: "Folder updated successfully."
       });
-      
+
       return data;
     } catch (error) {
       console.error('Error updating folder:', error);
@@ -106,9 +106,9 @@ export function useFolders() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
-  const deleteFolder = async (id: string) => {
+  const deleteFolder = useCallback(async (id: string) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -134,9 +134,9 @@ export function useFolders() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
-  const moveContentToFolder = async (contentId: string, folderId: string | null) => {
+  const moveContentToFolder = useCallback(async (contentId: string, folderId: string | null) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -161,11 +161,11 @@ export function useFolders() {
       });
       throw error;
     }
-  };
+  }, [toast, user]);
 
   useEffect(() => {
     fetchFolders();
-  }, [user]);
+  }, [fetchFolders]);
 
   return {
     folders,
