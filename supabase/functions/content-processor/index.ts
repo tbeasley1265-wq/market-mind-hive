@@ -13,11 +13,23 @@ serve(async (req) => {
   }
 
   try {
-    const { content, title, author, platform, originalUrl, summaryLength = 'standard' } = await req.json();
-    
+    const {
+      content,
+      title,
+      author,
+      platform,
+      originalUrl,
+      summaryLength = 'standard',
+      contentType,
+      metadata: extraMetadata
+    } = await req.json();
+
     if (!content || !title) {
       throw new Error('Content and title are required');
     }
+
+    const finalPlatform = platform || 'unknown';
+    const finalContentType = contentType || finalPlatform || 'processed';
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -143,23 +155,31 @@ serve(async (req) => {
     }
 
     // Save processed content to database
+    const processedAt = new Date().toISOString();
+    const baseMetadata = {
+      tags,
+      sentiment,
+      processed_at: processedAt,
+      summary_length: summaryLength
+    };
+
+    const mergedMetadata =
+      extraMetadata && typeof extraMetadata === 'object' && !Array.isArray(extraMetadata)
+        ? { ...baseMetadata, ...extraMetadata }
+        : baseMetadata;
+
     const { data: savedContent, error } = await supabaseClient
       .from('content_items')
       .insert({
         user_id: user.id,
         title,
-        content_type: 'processed',
+        content_type: finalContentType,
         original_url: originalUrl,
         author,
-        platform,
+        platform: finalPlatform,
         summary,
         full_content: content,
-        metadata: {
-          tags,
-          sentiment,
-          processed_at: new Date().toISOString(),
-          summary_length: summaryLength
-        }
+        metadata: mergedMetadata
       })
       .select()
       .single();
