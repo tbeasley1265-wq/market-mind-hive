@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,29 +54,58 @@ const Dashboard = () => {
     }
   }, [user, navigate]);
 
+  const fetchContentItems = useCallback(async (showSpinner = false) => {
+    if (!user) {
+      setContentItems([]);
+      setLoading(false);
+      return;
+    }
+
+    if (showSpinner) {
+      setLoading(true);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('content_items')
+        .select('*, folders(name, color)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setContentItems(data || []);
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   // Fetch content items from database
   useEffect(() => {
-    const fetchContentItems = async () => {
-      if (!user) return;
+    void fetchContentItems(true);
+  }, [fetchContentItems]);
 
-      try {
-        const { data, error } = await supabase
-          .from('content_items')
-          .select('*, folders(name, color)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+  useEffect(() => {
+    if (!user) return;
 
-        if (error) throw error;
-        setContentItems(data || []);
-      } catch (error) {
-        console.error('Error fetching content:', error);
-      } finally {
-        setLoading(false);
-      }
+    const channel = supabase
+      .channel('dashboard-content-updates')
+      .on('broadcast', { event: 'content_updated' }, (payload) => {
+        const payloadUserId = payload?.payload?.userId;
+        if (payloadUserId && payloadUserId !== user.id) {
+          return;
+        }
+
+        void fetchContentItems();
+      });
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    fetchContentItems();
-  }, [user]);
+  }, [user, fetchContentItems]);
 
   const handleContentClick = (contentId: string) => {
     navigate(`/content/${contentId}`);
@@ -111,14 +140,7 @@ const Dashboard = () => {
 
   const handleMoveToFolder = async (contentId: string, folderId: string | null) => {
     await moveContentToFolder(contentId, folderId);
-    // Refresh content items to reflect the change
-    const { data } = await supabase
-      .from('content_items')
-      .select('*, folders(name, color)')
-      .eq('user_id', user?.id)
-      .order('created_at', { ascending: false });
-    
-    setContentItems(data || []);
+    await fetchContentItems();
   };
 
 
@@ -152,13 +174,7 @@ const Dashboard = () => {
       });
 
       // Refresh content items
-      const { data } = await supabase
-        .from('content_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      setContentItems(data || []);
+      await fetchContentItems();
     } catch (error) {
       console.error('Error saving content:', error);
       toast({
