@@ -62,12 +62,12 @@ export function useInfluencerSources() {
         .from('influencer_sources')
         .upsert({
           user_id: user.id,
-          influencer_id: influencerId,
+          influencer_id: JSON.stringify(influencerId), // Store URLs as JSON string
           influencer_name: influencerName,
           selected_platforms: selectedPlatforms,
           platform_identifiers: platformIdentifiers
         }, {
-          onConflict: 'user_id,influencer_id'
+          onConflict: 'user_id,influencer_name' // Use name instead of id for conflict resolution
         })
         .select()
         .single();
@@ -100,7 +100,7 @@ export function useInfluencerSources() {
     }
   };
 
-  const removeInfluencerSource = async (influencerId: string) => {
+  const removeInfluencerSource = async (influencerName: string) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
@@ -108,11 +108,11 @@ export function useInfluencerSources() {
         .from('influencer_sources')
         .delete()
         .eq('user_id', user.id)
-        .eq('influencer_id', influencerId);
+        .eq('influencer_name', influencerName);
 
       if (error) throw error;
       
-      setInfluencerSources(prev => prev.filter(source => source.influencer_id !== influencerId));
+      setInfluencerSources(prev => prev.filter(source => source.influencer_name !== influencerName));
       
       toast({
         title: "Success",
@@ -129,13 +129,13 @@ export function useInfluencerSources() {
     }
   };
 
-  const getInfluencerPlatforms = (influencerId: string): string[] => {
-    const source = influencerSources.find(source => source.influencer_id === influencerId);
+  const getInfluencerPlatforms = (influencerName: string): string[] => {
+    const source = influencerSources.find(source => source.influencer_name === influencerName);
     return source?.selected_platforms || [];
   };
 
-  const isInfluencerAdded = (influencerId: string): boolean => {
-    return influencerSources.some(source => source.influencer_id === influencerId);
+  const isInfluencerAdded = (influencerName: string): boolean => {
+    return influencerSources.some(source => source.influencer_name === influencerName);
   };
 
   useEffect(() => {

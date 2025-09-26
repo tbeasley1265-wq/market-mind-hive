@@ -43,9 +43,7 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
     if (userError) {
@@ -62,6 +60,38 @@ serve(async (req) => {
 
     console.log(`Starting content aggregation for user: ${user.id}`);
 
+    // Enhanced platform detection functions
+    const detectPlatformFromUrl = (url: string): string => {
+      if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+      if (url.includes('substack.com')) return 'substack';
+      if (url.includes('podcast') || url.includes('.mp3') || url.includes('rss') || url.includes('feed')) return 'podcast';
+      if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
+      if (url.includes('reddit.com')) return 'reddit';
+      return 'unknown';
+    };
+
+    const detectAuthorFromUrl = (url: string, defaultAuthor: string): string => {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname;
+        
+        // Extract meaningful author from domain
+        if (hostname.includes('substack.com')) {
+          const subdomain = hostname.split('.')[0];
+          return subdomain.charAt(0).toUpperCase() + subdomain.slice(1) + ' Substack';
+        }
+        
+        if (hostname.includes('webrush.io')) return 'WebRush Podcast';
+        if (hostname.includes('youtube.com')) return 'YouTube Creator';
+        
+        // Fallback to domain name
+        const cleanDomain = hostname.replace('www.', '').split('.')[0];
+        return cleanDomain.charAt(0).toUpperCase() + cleanDomain.slice(1);
+      } catch {
+        return defaultAuthor;
+      }
+    };
+
     // Fetch user's influencer sources
     const { data: influencerSources, error: sourcesError } = await supabaseClient
       .from('influencer_sources')
@@ -77,17 +107,32 @@ serve(async (req) => {
     let processedCount = 0;
     const results: Array<Record<string, unknown>> = [];
 
+ codex/extend-influencer-catalog-with-platform-identifiers
     // Process each influencer source
     for (const source of (influencerSources || []) as InfluencerSourceRow[]) {
+
+    // Process each influencer source (limit to 2 to avoid memory issues)
+    for (const source of (influencerSources || []).slice(0, 2)) {
+ main
       console.log(`Processing source: ${source.influencer_name}`);
       const platformIdentifiers = source.platform_identifiers ?? {};
 
       try {
+        // Parse the influencer_id as JSON to get URLs
+        let sourceUrls: any = {};
+        try {
+          sourceUrls = JSON.parse(source.influencer_id);
+        } catch {
+          console.log(`Skipping ${source.influencer_name} - invalid URL data format`);
+          continue;
+        }
+
         // Process YouTube content
-        if (source.selected_platforms.includes('youtube')) {
+        if (source.selected_platforms.includes('youtube') && sourceUrls.youtube) {
           const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
           if (YOUTUBE_API_KEY) {
             console.log(`Fetching YouTube content for ${source.influencer_name}`);
+ codex/extend-influencer-catalog-with-platform-identifiers
 
             // Extract channel ID - prefer stored identifier then fall back to influencer_id
             const youtubeIdentifier = platformIdentifiers.youtube || source.influencer_id || '';
@@ -135,6 +180,48 @@ serve(async (req) => {
                         videoUrl: videoUrl,
                         summaryLength: 'standard'
                       }
+
+            
+            const channelId = sourceUrls.youtube;
+            
+            const searchResponse = await fetch(
+              `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=3`
+            );
+            
+            if (searchResponse.ok) {
+              const searchData = await searchResponse.json();
+              
+              for (const item of searchData.items || []) {
+                const videoUrl = `https://www.youtube.com/watch?v=${item.id.videoId}`;
+                
+                // Check if we already have this video
+                const { data: existing } = await supabaseClient
+                  .from('content_items')
+                  .select('id')
+                  .eq('original_url', videoUrl)
+                  .eq('user_id', user.id)
+                  .single();
+
+                if (!existing) {
+                  console.log(`Processing new YouTube video: ${item.snippet.title}`);
+                  
+                  // Process video through video-summarizer
+                  const videoResponse = await supabaseClient.functions.invoke('video-summarizer', {
+                    body: {
+                      videoUrl: videoUrl,
+                      summaryLength: 'standard'
+                    }
+                  });
+
+                  if (videoResponse.data?.success) {
+                    processedCount++;
+                    results.push({
+                      type: 'youtube',
+                      title: item.snippet.title,
+                      author: item.snippet.channelTitle,
+                      url: videoUrl,
+                      status: 'processed'
+ main
                     });
 
                     if (videoResponse.data?.success) {
@@ -155,8 +242,9 @@ serve(async (req) => {
         }
 
         // Process Podcast content
-        if (source.selected_platforms.includes('podcasts')) {
+        if (source.selected_platforms.includes('podcasts') && sourceUrls.podcasts) {
           console.log(`Fetching podcast content for ${source.influencer_name}`);
+ codex/extend-influencer-catalog-with-platform-identifiers
 
           // Construct podcast RSS feed URL
           const feedUrl = platformIdentifiers.podcasts || source.influencer_id;
@@ -167,6 +255,65 @@ serve(async (req) => {
               const feedResponse = await fetch(feedUrl);
               if (feedResponse.ok) {
                 const feedText = await feedResponse.text();
+
+          
+          const feedUrl = sourceUrls.podcasts;
+          
+          try {
+            const feedResponse = await fetch(feedUrl);
+            if (feedResponse.ok) {
+              const feedText = await feedResponse.text();
+              
+              // Parse podcast RSS feed
+              const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
+              
+              for (const itemMatch of itemMatches.slice(0, 2)) { // Process latest 2 episodes due to processing time
+                const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
+                const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
+                const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
+                const pubDateMatch = itemMatch.match(/<pubDate[^>]*>(.*?)<\/pubDate>/s);
+                const durationMatch = itemMatch.match(/<itunes:duration[^>]*>(.*?)<\/itunes:duration>/s);
+                const audioMatch = itemMatch.match(/<enclosure[^>]*url="([^"]*\.mp3[^"]*)"[^>]*>/s);
+                
+                if (titleMatch && linkMatch && audioMatch) {
+                  const title = titleMatch[1]?.trim().replace(/<[^>]*>/g, '') || 'Untitled';
+                  const episodeUrl = linkMatch[1]?.trim();
+                  const description = descMatch ? descMatch[1]?.trim().replace(/<[^>]*>/g, '') : '';
+                  const audioUrl = audioMatch[1]?.trim();
+                  const pubDateStr = pubDateMatch ? pubDateMatch[1]?.trim() : '';
+                  const durationStr = durationMatch ? durationMatch[1]?.trim() : '';
+                  
+                  // Parse duration to seconds
+                  let duration = 0;
+                  if (durationStr) {
+                    const parts = durationStr.split(':').map(p => parseInt(p) || 0);
+                    if (parts.length === 3) { // HH:MM:SS
+                      duration = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                    } else if (parts.length === 2) { // MM:SS
+                      duration = parts[0] * 60 + parts[1];
+                    } else if (parts.length === 1) { // SS
+                      duration = parts[0];
+                    }
+                  }
+                  
+                  // Parse publication date
+                  let publishedDate = null;
+                  if (pubDateStr) {
+                    try {
+                      publishedDate = new Date(pubDateStr).toISOString();
+                    } catch (e) {
+                      console.warn(`Could not parse date: ${pubDateStr}`);
+                    }
+                  }
+                  
+                  // Check if we already have this episode
+                  const { data: existing } = await supabaseClient
+                    .from('podcast_episodes')
+                    .select('id')
+                    .eq('episode_url', episodeUrl)
+                    .eq('user_id', user.id)
+                    .single();
+ main
 
                 // Parse podcast RSS feed
                 const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
@@ -208,6 +355,7 @@ serve(async (req) => {
                       } catch (e) {
                         console.warn(`Could not parse date: ${pubDateStr}`);
                       }
+ codex/extend-influencer-catalog-with-platform-identifiers
                     }
 
                     // Check if we already have this episode
@@ -229,6 +377,29 @@ serve(async (req) => {
                         if (!OPENAI_API_KEY) {
                           throw new Error('OpenAI API key not configured');
                         }
+
+                      
+                      const transcript = await transcriptionResponse.text();
+                      console.log(`Transcript length: ${transcript.length} characters`);
+                      
+                       // Auto-detect platform and author from URL
+                       const detectedPlatform = detectPlatformFromUrl(episodeUrl);
+                       const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
+                       
+                       console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
+                       
+                       // Process transcript through content-processor for summarization
+                       const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                         body: {
+                           title: title,
+                           content: transcript,
+                           author: detectedAuthor,
+                           platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
+                           originalUrl: episodeUrl,
+                           summaryLength: 'standard'
+                         }
+                       });
+ main
 
                         const audioResponse = await fetch(audioUrl);
                         if (!audioResponse.ok) {
@@ -257,6 +428,7 @@ serve(async (req) => {
                           const errorText = await transcriptionResponse.text();
                           throw new Error(`Transcription failed: ${transcriptionResponse.status} - ${errorText}`);
                         }
+ codex/extend-influencer-catalog-with-platform-identifiers
 
                         const transcript = await transcriptionResponse.text();
                         console.log(`Transcript length: ${transcript.length} characters`);
@@ -327,8 +499,34 @@ serve(async (req) => {
                             status: 'processed',
                             transcript_length: transcript.length,
                             guests: uniqueGuests
+
+                        
+                        // Remove duplicates and clean up
+                        const uniqueGuests = [...new Set(guests)]
+                          .filter(g => g.length > 2 && g.length < 50)
+                          .slice(0, 5); // Limit to 5 guests
+                        
+                         // Store in podcast_episodes table
+                         const { error: insertError } = await supabaseClient
+                           .from('podcast_episodes')
+                           .insert({
+                             user_id: user.id,
+                             podcast_name: detectedAuthor,
+                            episode_title: title,
+                            episode_url: episodeUrl,
+                            audio_url: audioUrl,
+                            published_date: publishedDate,
+                            duration: duration || null,
+                            description: description,
+                            transcript: transcript,
+                            summary: processedData.summary,
+                            guests: uniqueGuests,
+                            tags: processedData.tags || [],
+                            sentiment: processedData.sentiment
+ main
                           });
                         }
+ codex/extend-influencer-catalog-with-platform-identifiers
                       } catch (episodeError) {
                         console.error(`Error processing podcast episode ${title}:`, episodeError);
                         const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
@@ -336,6 +534,14 @@ serve(async (req) => {
                           type: 'podcast',
                           title: title,
                           author: source.influencer_name,
+
+                        
+                        processedCount++;
+                         results.push({
+                           type: 'podcast',
+                           title: title,
+                           author: detectedAuthor,
+ main
                           url: episodeUrl,
                           status: 'error',
                           error: errorMessage
@@ -351,15 +557,46 @@ serve(async (req) => {
           }
         }
 
-        // Process Substack/Newsletter content
-        if (source.selected_platforms.includes('substack') || source.selected_platforms.includes('newsletters')) {
+        // Process Newsletter/Substack content
+        if ((source.selected_platforms.includes('newsletters') || source.selected_platforms.includes('substack')) && sourceUrls.newsletters) {
           console.log(`Fetching newsletter content for ${source.influencer_name}`);
+ codex/extend-influencer-catalog-with-platform-identifiers
 
           // Construct RSS feed URL
           let feedUrl = platformIdentifiers.substack || platformIdentifiers.newsletters || source.influencer_id;
           if (feedUrl && feedUrl.includes('substack.com') && !feedUrl.includes('/feed')) {
             feedUrl = feedUrl.replace(/\/$/, '') + '/feed';
           }
+
+          
+          const feedUrl = sourceUrls.newsletters;
+          
+          try {
+            const feedResponse = await fetch(feedUrl);
+            if (feedResponse.ok) {
+              const feedText = await feedResponse.text();
+              
+              // Simple RSS parsing
+              const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
+              
+              for (const itemMatch of itemMatches.slice(0, 3)) {
+                const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
+                const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
+                const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
+                
+                if (titleMatch && linkMatch) {
+                  const title = titleMatch[1]?.trim() || 'Untitled';
+                  const link = linkMatch[1]?.trim();
+                  const description = descMatch ? descMatch[1]?.trim() : '';
+                  
+                  // Check if we already have this content
+                  const { data: existing } = await supabaseClient
+                    .from('content_items')
+                    .select('id')
+                    .eq('original_url', link)
+                    .eq('user_id', user.id)
+                    .single();
+ main
 
           if (!feedUrl) {
             console.log(`No newsletter feed configured for ${source.influencer_name}, skipping.`);

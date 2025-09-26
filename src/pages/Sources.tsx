@@ -348,6 +348,7 @@ const Sources = () => {
     isInfluencerAdded
   } = useInfluencerSources();
 
+ codex/extend-influencer-catalog-with-platform-identifiers
   const getInfluencerDefaults = (influencerId: string): PlatformIdentifierMap => {
     return influencerCatalog.find(influencer => influencer.id === influencerId)?.defaultPlatformIdentifiers || {};
   };
@@ -386,6 +387,71 @@ const Sources = () => {
   }, [influencerSources]);
 
   const filteredInfluencers = influencerCatalog.filter(influencer =>
+
+  // Influencers list - financial experts and thought leaders
+  const influencers = [
+    // Crypto & Bitcoin
+    { 
+      id: "raoul-pal", 
+      name: "Raoul Pal", 
+      platform: "Real Vision", 
+      followers: "1.2M", 
+      category: "Macro",
+      urls: {
+        youtube: "UCJ9m8jMgFo-BOmNVYdb_LQQ",
+        podcasts: "https://feeds.megaphone.fm/realvision",
+        newsletters: "https://www.realvision.com/feed"
+      }
+    },
+    { 
+      id: "anthony-pompliano", 
+      name: "Anthony Pompliano", 
+      platform: "YouTube", 
+      followers: "1.8M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
+        podcasts: "https://feeds.simplecast.com/7y1CbAbN",
+        newsletters: "https://pomp.substack.com/feed"
+      }
+    },
+    { 
+      id: "lex-fridman", 
+      name: "Lex Fridman", 
+      platform: "MIT/Podcast", 
+      followers: "2.8M", 
+      category: "AI",
+      urls: {
+        youtube: "UCSHZKyawb77ixDdsGog4iWA",
+        podcasts: "https://lexfridman.com/feed/podcast/",
+        newsletters: "https://lexfridman.com/feed/"
+      }
+    },
+    { 
+      id: "coin-bureau", 
+      name: "Coin Bureau (Guy)", 
+      platform: "YouTube", 
+      followers: "2.1M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
+        newsletters: "https://coinbureau.com/feed/"
+      }
+    },
+    { 
+      id: "benjamin-cowen", 
+      name: "Benjamin Cowen", 
+      platform: "YouTube", 
+      followers: "1.8M", 
+      category: "Crypto",
+      urls: {
+        youtube: "UCRvqjQPSeaWn-uEx-w0XOIg"
+      }
+    }
+  ];
+
+  const filteredInfluencers = influencers.filter(influencer => 
+ main
     influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     influencer.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     influencer.platform.toLowerCase().includes(searchTerm.toLowerCase())
@@ -413,6 +479,7 @@ const Sources = () => {
     }
   };
 
+ codex/extend-influencer-catalog-with-platform-identifiers
   const getPlatformPlaceholder = (platform: string) => {
     switch (platform) {
       case 'youtube':
@@ -445,11 +512,22 @@ const Sources = () => {
 
     try {
       await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms, updatedIdentifiers);
+
+  const handlePlatformToggle = async (influencer: any, platform: string) => {
+    const currentPlatforms = getInfluencerPlatforms(influencer.name);
+    const newPlatforms = currentPlatforms.includes(platform)
+      ? currentPlatforms.filter(p => p !== platform)
+      : [...currentPlatforms, platform];
+    
+    try {
+      await addOrUpdateInfluencerSource(influencer.urls || {}, influencer.name, newPlatforms);
+ main
     } catch (error) {
       console.error('Error updating platforms:', error);
     }
   };
 
+ codex/extend-influencer-catalog-with-platform-identifiers
   const handleIdentifierChange = (influencerId: string, platform: string, value: string) => {
     setPlatformIdentifierInputs(prev => ({
       ...prev,
@@ -475,8 +553,11 @@ const Sources = () => {
   };
 
   const handleRemoveInfluencer = async (influencerId: string) => {
+
+  const handleRemoveInfluencer = async (influencerName: string) => {
+ main
     try {
-      await removeInfluencerSource(influencerId);
+      await removeInfluencerSource(influencerName);
       setEditingInfluencer(null);
       setPlatformIdentifierInputs(prev => {
         const { [influencerId]: _removed, ...rest } = prev;
@@ -604,7 +685,7 @@ const Sources = () => {
                           size="sm"
                           variant="ghost"
                           className="text-destructive"
-                          onClick={() => handleRemoveInfluencer(source.influencer_id)}
+                          onClick={() => handleRemoveInfluencer(source.influencer_name)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -625,9 +706,16 @@ const Sources = () => {
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
                                 disabled={!isEditing}
-                                onCheckedChange={() => 
-                                  isEditing && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
-                                }
+                                 onCheckedChange={() => {
+                                   if (isEditing) {
+                                     // Create influencer object from source data
+                                     const influencer = {
+                                       name: source.influencer_name,
+                                       urls: JSON.parse(source.influencer_id)
+                                     };
+                                     handlePlatformToggle(influencer, platform);
+                                   }
+                                 }}
                               />
                               <Label 
                                 htmlFor={`${source.influencer_id}-${platform}`}
@@ -742,8 +830,8 @@ const Sources = () => {
             {/* Available Influencers */}
             <div className="grid gap-4 max-h-96 overflow-y-auto">
               {filteredInfluencers.map((influencer) => {
-                const isAdded = isInfluencerAdded(influencer.id);
-                const selectedPlatforms = getInfluencerPlatforms(influencer.id);
+                const isAdded = isInfluencerAdded(influencer.name);
+                const selectedPlatforms = getInfluencerPlatforms(influencer.name);
                 
                 return (
                   <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
@@ -802,7 +890,7 @@ const Sources = () => {
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
                                 onCheckedChange={() => 
-                                  handlePlatformToggle(influencer.id, influencer.name, platform)
+                                  handlePlatformToggle(influencer, platform)
                                 }
                               />
                               <Label 
