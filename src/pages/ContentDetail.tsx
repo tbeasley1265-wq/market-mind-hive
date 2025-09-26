@@ -147,7 +147,10 @@ const ContentDetail = () => {
             },
             source_id: null,
             updated_at: mockItem.created_at,
-            folder_id: null
+            folder_id: null,
+            audio_url: null,
+            processing_status: 'completed',
+            transcript_url: null
           };
           setContent(enrichedContent);
         } else {

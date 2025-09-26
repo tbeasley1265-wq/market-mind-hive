@@ -148,10 +148,13 @@ serve(async (req) => {
                     body: {
                       videoUrl: videoUrl,
                       summaryLength: 'standard'
+                    },
+                    headers: {
+                      Authorization: authHeader
                     }
                   });
 
-                  if (videoResponse.data?.success) {
+                  if (videoResponse.data?.processed) {
                     processedCount++;
                     results.push({
                       type: 'youtube',
@@ -277,19 +280,22 @@ serve(async (req) => {
                        
                        console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
                        
-                       // Process transcript through content-processor for summarization
-                       const contentResponse = await supabaseClient.functions.invoke('content-processor', {
-                         body: {
-                           title: title,
-                           content: transcript,
-                           author: detectedAuthor,
-                           platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
-                           originalUrl: episodeUrl,
-                           summaryLength: 'standard'
-                         }
-                       });
+                        // Process transcript through content-processor for summarization
+                        const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                          body: {
+                            title: title,
+                            content: transcript,
+                            author: detectedAuthor,
+                            platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
+                            originalUrl: episodeUrl,
+                            summaryLength: 'standard'
+                          },
+                          headers: {
+                            Authorization: authHeader
+                          }
+                        });
 
-                      if (contentResponse.data?.success) {
+                      if (contentResponse.data?.processed) {
                         const processedData = contentResponse.data.data;
                         
                         // Extract guests from transcript (simple pattern matching)
@@ -410,10 +416,13 @@ serve(async (req) => {
                         platform: 'substack',
                         originalUrl: link,
                         summaryLength: 'standard'
+                      },
+                      headers: {
+                        Authorization: authHeader
                       }
                     });
 
-                    if (contentResponse.data?.success) {
+                    if (contentResponse.data?.processed) {
                       processedCount++;
                       results.push({
                         type: 'newsletter',
