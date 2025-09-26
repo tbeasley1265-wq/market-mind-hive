@@ -1,4 +1,8 @@
+ codex/add-sync-processing-after-influencer-source-update
+import React, { useState, useEffect, useCallback } from 'react';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+ main
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +60,58 @@ const Dashboard = () => {
       navigate('/auth');
     }
   }, [user, navigate]);
+
+ codex/add-sync-processing-after-influencer-source-update
+  const fetchContentItems = useCallback(async (showSpinner = false) => {
+    if (!user) {
+      setContentItems([]);
+      setLoading(false);
+      return;
+    }
+
+    if (showSpinner) {
+      setLoading(true);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('content_items')
+        .select('*, folders(name, color)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setContentItems(data || []);
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Fetch content items from database
+  useEffect(() => {
+    void fetchContentItems(true);
+  }, [fetchContentItems]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('dashboard-content-updates')
+      .on('broadcast', { event: 'content_updated' }, (payload) => {
+        const payloadUserId = payload?.payload?.userId;
+        if (payloadUserId && payloadUserId !== user.id) {
+          return;
+        }
+
+        void fetchContentItems();
+      });
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -125,6 +181,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
+ main
     };
   }, [user, fetchContentItems]);
 
@@ -194,6 +251,10 @@ const Dashboard = () => {
         description: `"${title}" has been saved to your bookmarks.`,
       });
 
+ codex/add-sync-processing-after-influencer-source-update
+      // Refresh content items
+
+ main
       await fetchContentItems();
     } catch (error) {
       console.error('Error saving content:', error);
