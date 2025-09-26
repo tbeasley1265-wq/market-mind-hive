@@ -1,4 +1,8 @@
+ codex/add-sync-processing-after-influencer-source-update
 import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+ main
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,10 +28,10 @@ import UploadSourcesModal from "@/components/content/UploadSourcesModal";
 import { FolderModal } from "@/components/content/FolderModal";
 import { FolderSidebar } from "@/components/content/FolderSidebar";
 import Header from "@/components/layout/Header";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useFolders } from "@/hooks/useFolders";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { formatDistanceToNow } from "date-fns";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -42,10 +46,13 @@ const Dashboard = () => {
   const [editingFolder, setEditingFolder] = useState<any>(null);
   const [contentItems, setContentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
   const { folders, createFolder, updateFolder, deleteFolder, moveContentToFolder } = useFolders();
+  const isMountedRef = useRef(false);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -54,6 +61,7 @@ const Dashboard = () => {
     }
   }, [user, navigate]);
 
+ codex/add-sync-processing-after-influencer-source-update
   const fetchContentItems = useCallback(async (showSpinner = false) => {
     if (!user) {
       setContentItems([]);
@@ -104,6 +112,76 @@ const Dashboard = () => {
 
     return () => {
       supabase.removeChannel(channel);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchContentItems = useCallback(async (options?: { showSyncIndicator?: boolean }) => {
+    if (!user) return;
+
+    if (options?.showSyncIndicator && isMountedRef.current) {
+      setIsSyncing(true);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('content_items')
+        .select('*, folders(name, color)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (isMountedRef.current) {
+        setContentItems(data || []);
+        setLastSyncTime(new Date());
+      }
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+        if (options?.showSyncIndicator) {
+          setIsSyncing(false);
+        }
+      }
+    }
+  }, [user]);
+
+  // Fetch content items from database and subscribe for updates
+  useEffect(() => {
+    if (!user) return;
+
+    fetchContentItems();
+
+    const channel = supabase
+      .channel(`content-items-dashboard-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'content_items',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchContentItems({ showSyncIndicator: true });
+        }
+      )
+      .subscribe();
+
+    const interval = window.setInterval(() => {
+      fetchContentItems({ showSyncIndicator: true });
+    }, 120000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(interval);
+ main
     };
   }, [user, fetchContentItems]);
 
@@ -173,7 +251,10 @@ const Dashboard = () => {
         description: `"${title}" has been saved to your bookmarks.`,
       });
 
+ codex/add-sync-processing-after-influencer-source-update
       // Refresh content items
+
+ main
       await fetchContentItems();
     } catch (error) {
       console.error('Error saving content:', error);
@@ -338,22 +419,38 @@ const Dashboard = () => {
               ))}
             </div>
             
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
+              <span className={`h-2 w-2 rounded-full ${isSyncing ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500/80'}`} />
+              <span>
+                {isSyncing
+                  ? 'Syncing latest research...'
+                  : lastSyncTime
+                    ? `Last synced ${formatDistanceToNow(lastSyncTime, { addSuffix: true })}`
+                    : 'Waiting for first sync...'}
+              </span>
             </div>
+            <span className="text-xs sm:text-sm text-muted-foreground/80">
+              Background sync runs every 2 minutes.
+            </span>
           </div>
 
           {/* Content Grid */}

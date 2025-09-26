@@ -9,31 +9,101 @@ const corsHeaders = {
 
 // Function to extract video ID from YouTube URL
 function extractVideoId(url: string): string | null {
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = url.match(regex);
-  return match ? match[1] : null;
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    if (hostname === 'youtu.be') {
+      const pathId = parsedUrl.pathname.replace(/^\//, '').split('/')[0];
+      return pathId && pathId.length === 11 ? pathId : null;
+    }
+
+    if (hostname.endsWith('youtube.com')) {
+      const directId = parsedUrl.searchParams.get('v');
+      if (directId && directId.length === 11) {
+        return directId;
+      }
+
+      const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+      const candidate = pathSegments.find((segment) => segment.length === 11);
+      return candidate ?? null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
-// Function to get YouTube transcript using YouTube Transcript API
-async function getYouTubeTranscript(videoId: string): Promise<string> {
+type TranscriptSegment = {
+  text: string;
+  start: number;
+  duration: number;
+};
+
+type TranscriptResult = {
+  title: string;
+  author: string;
+  transcriptText: string;
+  segments: TranscriptSegment[];
+};
+
+// Utility to decode a subset of HTML entities that appear in YouTube transcripts
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&nbsp;', ' ');
+}
+
+// Function to get YouTube transcript using a public transcript service
+async function getYouTubeTranscript(videoId: string): Promise<TranscriptResult> {
   try {
-    // Using youtube-transcript-api (you might need to implement this differently)
-    // For now, we'll simulate getting transcript from video description or use a mock
-    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
-    const html = await response.text();
-    
-    // Extract title and description from the HTML
-    const titleMatch = html.match(/<meta name="title" content="([^"]+)"/);
-    const descMatch = html.match(/<meta name="description" content="([^"]+)"/);
-    
-    const title = titleMatch ? titleMatch[1] : 'Unknown Title';
-    const description = descMatch ? descMatch[1] : '';
-    
-    // In a real implementation, you'd use the YouTube API or a transcript service
-    return `Title: ${title}\nDescription: ${description}`;
+    const transcriptResponse = await fetch(`https://youtubetranscript.com/?server_vid2=${videoId}`);
+
+    if (!transcriptResponse.ok) {
+      throw new Error(`Transcript service responded with ${transcriptResponse.status}`);
+    }
+
+    const transcriptJson = await transcriptResponse.json() as Array<{ text: string; start?: number | string; duration?: number | string }>;
+
+    if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) {
+      throw new Error('Transcript not available for this video.');
+    }
+
+    const segments: TranscriptSegment[] = transcriptJson.map((segment) => ({
+      text: decodeHtmlEntities(segment.text || ''),
+      start: Number(segment.start ?? 0),
+      duration: Number(segment.duration ?? 0),
+    }));
+
+    const transcriptText = segments
+      .map((segment) => segment.text.trim())
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const metadataResponse = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+
+    if (!metadataResponse.ok) {
+      throw new Error(`Metadata request failed with ${metadataResponse.status}`);
+    }
+
+    const metadata = await metadataResponse.json() as { title?: string; author_name?: string };
+
+    return {
+      title: metadata.title ?? 'YouTube Video',
+      author: metadata.author_name ?? 'Unknown',
+      transcriptText,
+      segments,
+    };
   } catch (error) {
-    console.error('Error fetching YouTube data:', error);
-    throw new Error('Failed to fetch video content');
+    console.error('Error fetching YouTube transcript:', error);
+    throw new Error('Failed to fetch video transcript');
   }
 }
 
@@ -62,29 +132,34 @@ serve(async (req) => {
       throw new Error('User not authenticated');
     }
 
-    let videoContent = '';
+    let transcriptText = '';
     let author = '';
     let title = '';
-    
+    let transcriptSegments: TranscriptSegment[] = [];
+
     // Handle YouTube videos
     if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
       const videoId = extractVideoId(videoUrl);
       if (!videoId) {
         throw new Error('Invalid YouTube URL');
       }
-      
-      // Get video transcript/content
-      videoContent = await getYouTubeTranscript(videoId);
-      
-      // Extract author from content (you might want to use YouTube API for better data)
-      const channelMatch = videoContent.match(/Channel: ([^\\n]+)/);
-      author = channelMatch ? channelMatch[1] : 'Unknown';
-      
-      const titleMatch = videoContent.match(/Title: ([^\\n]+)/);
-      title = titleMatch ? titleMatch[1] : 'YouTube Video';
+
+      const transcriptResult = await getYouTubeTranscript(videoId);
+      transcriptText = transcriptResult.transcriptText;
+      author = transcriptResult.author;
+      title = transcriptResult.title;
+      transcriptSegments = transcriptResult.segments;
     } else {
       throw new Error('Currently only YouTube videos are supported');
     }
+
+    if (!transcriptText) {
+      throw new Error('Transcript is empty or unavailable for this video');
+    }
+
+    const truncatedTranscriptForPrompt = transcriptText.length > 12000
+      ? `${transcriptText.slice(0, 12000)}...`
+      : transcriptText;
 
     // Determine summary length instructions
     let lengthInstruction = '';
@@ -104,16 +179,16 @@ serve(async (req) => {
     const summaryPrompt = `
     ${lengthInstruction}
 
-    Analyze this video content and provide:
-    1. A summary of the main points discussed
-    2. Key financial insights and takeaways
-    3. Mentioned assets, companies, or important figures
-    4. Investment implications or market outlook
-    5. Overall sentiment (bullish/bearish/neutral)
-    6. Notable quotes or key statements
+      Analyze this video transcript and provide:
+      1. A summary of the main points discussed
+      2. Key financial insights and takeaways
+      3. Mentioned assets, companies, or important figures
+      4. Investment implications or market outlook
+      5. Overall sentiment (bullish/bearish/neutral)
+      6. Notable quotes or key statements
 
-    Video Content: ${videoContent}
-    `;
+      Transcript: ${truncatedTranscriptForPrompt}
+      `;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -204,13 +279,15 @@ serve(async (req) => {
         author,
         platform: 'youtube',
         summary,
-        full_content: videoContent,
+        full_content: transcriptText,
         metadata: {
           tags,
           sentiment,
           processed_at: new Date().toISOString(),
           summary_length: summaryLength,
-          video_id: extractVideoId(videoUrl)
+          video_id: extractVideoId(videoUrl),
+          transcript_source: 'youtubetranscript.com',
+          transcript_segments_preview: transcriptSegments.slice(0, 50)
         }
       })
       .select()

@@ -3,6 +3,9 @@ project_id = "zpytenapldiyxvjrntrm"
 [functions.ai-chat]
 verify_jwt = true
 
+[functions.content-aggregator]
+verify_jwt = true
+
 [functions.content-processor]
 verify_jwt = true
 
