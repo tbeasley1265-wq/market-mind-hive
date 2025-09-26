@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Header from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,31 @@ import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface PlatformConnectorDetails {
+  channelId?: string;
+  handle?: string;
+  feedUrl?: string;
+  rssUrl?: string;
+  url?: string;
+}
+
+interface InfluencerDefinition {
+  id: string;
+  name: string;
+  platform: string;
+  followers: string;
+  category: string;
+  connectors: Record<string, PlatformConnectorDetails>;
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  twitter: 'X (Twitter)',
+  podcasts: 'Podcast',
+  substack: 'Substack',
+  newsletters: 'Newsletter'
+};
+
 const Sources = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
@@ -39,46 +64,301 @@ const Sources = () => {
     isInfluencerAdded
   } = useInfluencerSources();
 
-  // Influencers list - financial experts and thought leaders
-  const influencers = [
-    // Crypto & Bitcoin
-    { id: "raoul-pal", name: "Raoul Pal", platform: "Real Vision", followers: "1.2M", category: "Macro" },
-    { id: "anthony-pompliano", name: "Anthony Pompliano", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    { id: "michael-saylor", name: "Michael Saylor", platform: "Twitter", followers: "3.1M", category: "Bitcoin" },
-    { id: "balaji-srinivasan", name: "Balaji Srinivasan", platform: "Twitter", followers: "920K", category: "Tech" },
-    { id: "coin-bureau", name: "Coin Bureau (Guy)", platform: "YouTube", followers: "2.1M", category: "Crypto" },
-    { id: "benjamin-cowen", name: "Benjamin Cowen", platform: "YouTube", followers: "1.8M", category: "Crypto" },
-    
-    // Traditional Finance & Macro
-    { id: "cathie-wood", name: "Cathie Wood", platform: "ARK Invest", followers: "2.1M", category: "Innovation" },
-    { id: "lyn-alden", name: "Lyn Alden", platform: "Substack", followers: "450K", category: "Finance" },
-    { id: "ray-dalio", name: "Ray Dalio", platform: "LinkedIn", followers: "3.2M", category: "Macro" },
-    { id: "howard-marks", name: "Howard Marks", platform: "Oaktree Capital", followers: "890K", category: "Investing" },
-    { id: "warren-buffett", name: "Warren Buffett", platform: "Berkshire Hathaway", followers: "4.2M", category: "Investing" },
-    { id: "bill-ackman", name: "Bill Ackman", platform: "Twitter", followers: "1.2M", category: "Investing" },
-    
-    // Tech & Innovation
-    { id: "elon-musk", name: "Elon Musk", platform: "Twitter", followers: "150M", category: "Tech" },
-    { id: "sam-altman", name: "Sam Altman", platform: "OpenAI", followers: "2.1M", category: "AI" },
-    { id: "jensen-huang", name: "Jensen Huang", platform: "NVIDIA", followers: "680K", category: "AI" },
-    { id: "lex-fridman", name: "Lex Fridman", platform: "MIT/Podcast", followers: "2.8M", category: "AI" },
-    
-    // Venture Capital
-    { id: "marc-andreessen", name: "Marc Andreessen", platform: "a16z", followers: "1.8M", category: "VC" },
-    { id: "naval-ravikant", name: "Naval Ravikant", platform: "AngelList", followers: "2.1M", category: "VC" },
-    { id: "chamath-palihapitiya", name: "Chamath Palihapitiya", platform: "Social Capital", followers: "1.6M", category: "VC" },
-    { id: "peter-thiel", name: "Peter Thiel", platform: "Founders Fund", followers: "1.1M", category: "VC" },
-    
-    // Economics & Policy
-    { id: "paul-krugman", name: "Paul Krugman", platform: "New York Times", followers: "5.2M", category: "Economics" },
-    { id: "janet-yellen", name: "Janet Yellen", platform: "US Treasury", followers: "1.8M", category: "Policy" },
-    { id: "jerome-powell", name: "Jerome Powell", platform: "Federal Reserve", followers: "2.1M", category: "Policy" },
-    
-    // Fintech
-    { id: "brian-armstrong", name: "Brian Armstrong", platform: "Coinbase", followers: "1.8M", category: "Fintech" },
-    { id: "jack-dorsey", name: "Jack Dorsey", platform: "Block (Square)", followers: "5.8M", category: "Fintech" },
-    { id: "patrick-collison", name: "Patrick Collison", platform: "Stripe", followers: "680K", category: "Fintech" },
-  ];
+  // Influencers list - financial experts and thought leaders with connector metadata
+  const influencers = useMemo<InfluencerDefinition[]>(() => [
+    {
+      id: "raoul-pal",
+      name: "Raoul Pal",
+      platform: "Real Vision",
+      followers: "1.2M",
+      category: "Macro",
+      connectors: {
+        youtube: { channelId: "UC23-WdQqMghRyJk3fUsBuuA" },
+        podcasts: { rssUrl: "https://feeds.simplecast.com/k8C0CzeT" },
+        substack: { feedUrl: "https://www.raoulpaljourney.com/feed/" },
+        twitter: { handle: "RaoulGMI" }
+      }
+    },
+    {
+      id: "anthony-pompliano",
+      name: "Anthony Pompliano",
+      platform: "The Pomp Podcast",
+      followers: "1.8M",
+      category: "Crypto",
+      connectors: {
+        youtube: { channelId: "UCevXpeL8cNyAnww-NqJ4m2g" },
+        podcasts: { rssUrl: "https://rss.art19.com/pomp-podcast" },
+        substack: { feedUrl: "https://pomp.substack.com/feed" },
+        twitter: { handle: "APompliano" }
+      }
+    },
+    {
+      id: "michael-saylor",
+      name: "Michael Saylor",
+      platform: "MicroStrategy",
+      followers: "3.1M",
+      category: "Bitcoin",
+      connectors: {
+        youtube: { channelId: "UC3G0-k4NoQ_lCBLJ2m0Me7w" },
+        twitter: { handle: "saylor" }
+      }
+    },
+    {
+      id: "balaji-srinivasan",
+      name: "Balaji Srinivasan",
+      platform: "The Network State",
+      followers: "920K",
+      category: "Tech",
+      connectors: {
+        podcasts: { rssUrl: "https://feeds.simplecast.com/68j0E3PY" },
+        substack: { feedUrl: "https://balajis.com/feed/" },
+        twitter: { handle: "balajis" }
+      }
+    },
+    {
+      id: "coin-bureau",
+      name: "Coin Bureau (Guy)",
+      platform: "Coin Bureau",
+      followers: "2.1M",
+      category: "Crypto",
+      connectors: {
+        youtube: { channelId: "UCqK_GSMbpiV8spgD3ZGloSw" },
+        podcasts: { rssUrl: "https://feeds.simplecast.com/Bq8KS7I5" },
+        newsletters: { feedUrl: "https://coinbureau.substack.com/feed" },
+        twitter: { handle: "coinbureau" }
+      }
+    },
+    {
+      id: "benjamin-cowen",
+      name: "Benjamin Cowen",
+      platform: "Into The Cryptoverse",
+      followers: "1.8M",
+      category: "Crypto",
+      connectors: {
+        youtube: { channelId: "UC7PvPan7ku_l9Xo0J4bH_ZQ" },
+        substack: { feedUrl: "https://newsletter.intothecryptoverse.com/feed" },
+        twitter: { handle: "intocryptoverse" }
+      }
+    },
+    {
+      id: "cathie-wood",
+      name: "Cathie Wood",
+      platform: "ARK Invest",
+      followers: "2.1M",
+      category: "Innovation",
+      connectors: {
+        youtube: { channelId: "UCtYzVCmf-3rs2w4KPGK1vdw" },
+        podcasts: { rssUrl: "https://feeds.simplecast.com/bFnZ4dJd" },
+        newsletters: { feedUrl: "https://ark-invest.com/feed/" },
+        twitter: { handle: "CathieDWood" }
+      }
+    },
+    {
+      id: "lyn-alden",
+      name: "Lyn Alden",
+      platform: "Lyn Alden Investment Strategy",
+      followers: "450K",
+      category: "Finance",
+      connectors: {
+        substack: { feedUrl: "https://www.lynalden.com/feed/" },
+        twitter: { handle: "LynAldenContact" }
+      }
+    },
+    {
+      id: "ray-dalio",
+      name: "Ray Dalio",
+      platform: "Principles",
+      followers: "3.2M",
+      category: "Macro",
+      connectors: {
+        youtube: { channelId: "UCqvaXJ1K3HheTPNjH-KpwXQ" },
+        newsletters: { feedUrl: "https://www.principles.com/feed/" },
+        twitter: { handle: "RayDalio" }
+      }
+    },
+    {
+      id: "howard-marks",
+      name: "Howard Marks",
+      platform: "Oaktree Capital",
+      followers: "890K",
+      category: "Investing",
+      connectors: {
+        newsletters: { feedUrl: "https://www.oaktreecapital.com/insights?format=feed&type=rss" }
+      }
+    },
+    {
+      id: "warren-buffett",
+      name: "Warren Buffett",
+      platform: "Berkshire Hathaway",
+      followers: "4.2M",
+      category: "Investing",
+      connectors: {
+        newsletters: { feedUrl: "https://www.berkshirehathaway.com/rss/news.xml" }
+      }
+    },
+    {
+      id: "bill-ackman",
+      name: "Bill Ackman",
+      platform: "Pershing Square",
+      followers: "1.2M",
+      category: "Investing",
+      connectors: {
+        newsletters: { feedUrl: "https://pershingsquare.com/feed/" },
+        twitter: { handle: "BillAckman" }
+      }
+    },
+    {
+      id: "elon-musk",
+      name: "Elon Musk",
+      platform: "Tesla / SpaceX",
+      followers: "150M",
+      category: "Tech",
+      connectors: {
+        twitter: { handle: "elonmusk" }
+      }
+    },
+    {
+      id: "sam-altman",
+      name: "Sam Altman",
+      platform: "OpenAI",
+      followers: "2.1M",
+      category: "AI",
+      connectors: {
+        twitter: { handle: "sama" }
+      }
+    },
+    {
+      id: "jensen-huang",
+      name: "Jensen Huang",
+      platform: "NVIDIA",
+      followers: "680K",
+      category: "AI",
+      connectors: {
+        youtube: { channelId: "UC0rZoXAD5lxgBHMsjrGwWWQ" },
+        twitter: { handle: "nvidia" }
+      }
+    },
+    {
+      id: "lex-fridman",
+      name: "Lex Fridman",
+      platform: "Lex Fridman Podcast",
+      followers: "2.8M",
+      category: "AI",
+      connectors: {
+        youtube: { channelId: "UCSHZKyawb77ixDdsGog4iWA" },
+        podcasts: { rssUrl: "https://lexfridman.com/feed/podcast/" },
+        substack: { feedUrl: "https://lexfridman.substack.com/feed" },
+        twitter: { handle: "lexfridman" }
+      }
+    },
+    {
+      id: "marc-andreessen",
+      name: "Marc Andreessen",
+      platform: "Andreessen Horowitz",
+      followers: "1.8M",
+      category: "VC",
+      connectors: {
+        podcasts: { rssUrl: "https://feeds.simplecast.com/4MvgQ73R" },
+        newsletters: { feedUrl: "https://future.a16z.com/feed/" },
+        twitter: { handle: "pmarca" }
+      }
+    },
+    {
+      id: "naval-ravikant",
+      name: "Naval Ravikant",
+      platform: "AngelList",
+      followers: "2.1M",
+      category: "VC",
+      connectors: {
+        podcasts: { rssUrl: "https://nav.al/feed" },
+        twitter: { handle: "naval" }
+      }
+    },
+    {
+      id: "chamath-palihapitiya",
+      name: "Chamath Palihapitiya",
+      platform: "Social Capital",
+      followers: "1.6M",
+      category: "VC",
+      connectors: {
+        podcasts: { rssUrl: "https://feeds.megaphone.fm/allin" },
+        twitter: { handle: "chamath" }
+      }
+    },
+    {
+      id: "peter-thiel",
+      name: "Peter Thiel",
+      platform: "Founders Fund",
+      followers: "1.1M",
+      category: "VC",
+      connectors: {
+        newsletters: { feedUrl: "https://foundersfund.com/feed/" }
+      }
+    },
+    {
+      id: "paul-krugman",
+      name: "Paul Krugman",
+      platform: "New York Times",
+      followers: "5.2M",
+      category: "Economics",
+      connectors: {
+        newsletters: { feedUrl: "https://rss.nytimes.com/services/xml/rss/nyt/PaulKrugman.xml" },
+        twitter: { handle: "paulkrugman" }
+      }
+    },
+    {
+      id: "janet-yellen",
+      name: "Janet Yellen",
+      platform: "US Treasury",
+      followers: "1.8M",
+      category: "Policy",
+      connectors: {
+        newsletters: { feedUrl: "https://home.treasury.gov/news/press-releases/rss" }
+      }
+    },
+    {
+      id: "jerome-powell",
+      name: "Jerome Powell",
+      platform: "Federal Reserve",
+      followers: "2.1M",
+      category: "Policy",
+      connectors: {
+        newsletters: { feedUrl: "https://www.federalreserve.gov/feeds/press_all.xml" }
+      }
+    },
+    {
+      id: "brian-armstrong",
+      name: "Brian Armstrong",
+      platform: "Coinbase",
+      followers: "1.8M",
+      category: "Fintech",
+      connectors: {
+        podcasts: { rssUrl: "https://feeds.buzzsprout.com/222503.rss" },
+        twitter: { handle: "brian_armstrong" }
+      }
+    },
+    {
+      id: "jack-dorsey",
+      name: "Jack Dorsey",
+      platform: "Block (Square)",
+      followers: "5.8M",
+      category: "Fintech",
+      connectors: {
+        twitter: { handle: "jack" }
+      }
+    },
+    {
+      id: "patrick-collison",
+      name: "Patrick Collison",
+      platform: "Stripe",
+      followers: "680K",
+      category: "Fintech",
+      connectors: {
+        newsletters: { feedUrl: "https://stripe.com/blog/feed" },
+        twitter: { handle: "patrickc" }
+      }
+    }
+  ], []);
 
   const filteredInfluencers = influencers.filter(influencer => 
     influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,13 +389,30 @@ const Sources = () => {
   };
 
   const handlePlatformToggle = async (influencerId: string, influencerName: string, platform: string) => {
+    const influencer = influencers.find(inf => inf.id === influencerId);
+    const connectorMap = influencer?.connectors || {};
+
+    if (!connectorMap[platform]) {
+      toast({
+        title: "Connector unavailable",
+        description: `${influencerName} does not have a configured ${PLATFORM_LABELS[platform] || platform} connector yet.`
+      });
+      return;
+    }
+
     const currentPlatforms = getInfluencerPlatforms(influencerId);
-    const newPlatforms = currentPlatforms.includes(platform)
+    const toggledPlatforms = currentPlatforms.includes(platform)
       ? currentPlatforms.filter(p => p !== platform)
       : [...currentPlatforms, platform];
-    
+    const sanitizedPlatforms = toggledPlatforms.filter(p => Boolean(connectorMap[p]));
+
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, newPlatforms);
+      await addOrUpdateInfluencerSource(
+        influencerId,
+        influencerName,
+        sanitizedPlatforms,
+        connectorMap
+      );
     } catch (error) {
       console.error('Error updating platforms:', error);
     }
@@ -131,8 +428,25 @@ const Sources = () => {
   };
 
   const handleSelectAllPlatforms = async (influencerId: string, influencerName: string) => {
+    const influencer = influencers.find(inf => inf.id === influencerId);
+    const connectorMap = influencer?.connectors || {};
+    const supportedPlatforms = availablePlatforms.filter(platform => Boolean(connectorMap[platform]));
+
+    if (supportedPlatforms.length === 0) {
+      toast({
+        title: "No connectors available",
+        description: `${influencerName} does not have any content connectors configured yet.`
+      });
+      return;
+    }
+
     try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms]);
+      await addOrUpdateInfluencerSource(
+        influencerId,
+        influencerName,
+        supportedPlatforms,
+        connectorMap
+      );
     } catch (error) {
       console.error('Error selecting all platforms:', error);
     }
@@ -141,8 +455,20 @@ const Sources = () => {
   const handleSelectAllInfluencers = async () => {
     try {
       for (const influencer of influencers) {
+        const connectorMap = influencer.connectors || {};
+        const supportedPlatforms = availablePlatforms.filter(platform => Boolean(connectorMap[platform]));
+
+        if (supportedPlatforms.length === 0) {
+          continue;
+        }
+
         if (!isInfluencerAdded(influencer.id)) {
-          await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms]);
+          await addOrUpdateInfluencerSource(
+            influencer.id,
+            influencer.name,
+            supportedPlatforms,
+            connectorMap
+          );
         }
       }
     } catch (error) {
@@ -250,26 +576,28 @@ const Sources = () => {
                       <div className="flex flex-wrap gap-2">
                         {availablePlatforms.map((platform) => {
                           const Icon = getPlatformIcon(platform);
+                          const connectorMap = influencer?.connectors || {};
+                          const hasConnector = Boolean(connectorMap[platform]);
                           const isSelected = source.selected_platforms.includes(platform);
-                          
+
                           return (
                             <div key={platform} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
-                                disabled={!isEditing}
-                                onCheckedChange={() => 
-                                  isEditing && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
+                                disabled={!isEditing || !hasConnector}
+                                onCheckedChange={() =>
+                                  isEditing && hasConnector && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
                                 }
                               />
-                              <Label 
+                              <Label
                                 htmlFor={`${source.influencer_id}-${platform}`}
                                 className={`flex items-center gap-1 cursor-pointer capitalize ${
-                                  !isEditing ? 'opacity-50' : ''
+                                  !isEditing || !hasConnector ? 'opacity-50' : ''
                                 }`}
                               >
                                 <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
-                                {platform}
+                                {PLATFORM_LABELS[platform] || platform}
                               </Label>
                             </div>
                           );
@@ -328,7 +656,9 @@ const Sources = () => {
               {filteredInfluencers.map((influencer) => {
                 const isAdded = isInfluencerAdded(influencer.id);
                 const selectedPlatforms = getInfluencerPlatforms(influencer.id);
-                
+                const connectorMap = influencer.connectors || {};
+                const availableConnectorPlatforms = availablePlatforms.filter(platform => Boolean(connectorMap[platform]));
+
                 return (
                   <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
@@ -346,6 +676,7 @@ const Sources = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleSelectAllPlatforms(influencer.id, influencer.name)}
+                          disabled={availableConnectorPlatforms.length === 0}
                         >
                           Select All
                         </Button>
@@ -364,23 +695,27 @@ const Sources = () => {
                       <div className="flex flex-wrap gap-2">
                         {availablePlatforms.map((platform) => {
                           const Icon = getPlatformIcon(platform);
-                          const isSelected = selectedPlatforms.includes(platform);
-                          
+                          const hasConnector = Boolean(connectorMap[platform]);
+                          const isSelected = selectedPlatforms.includes(platform) && hasConnector;
+
                           return (
                             <div key={platform} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
-                                onCheckedChange={() => 
-                                  handlePlatformToggle(influencer.id, influencer.name, platform)
+                                disabled={!hasConnector}
+                                onCheckedChange={() =>
+                                  hasConnector && handlePlatformToggle(influencer.id, influencer.name, platform)
                                 }
                               />
-                              <Label 
+                              <Label
                                 htmlFor={`${influencer.id}-${platform}`}
-                                className="flex items-center gap-1 cursor-pointer capitalize"
+                                className={`flex items-center gap-1 cursor-pointer capitalize ${
+                                  !hasConnector ? 'opacity-50' : ''
+                                }`}
                               >
                                 <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
-                                {platform}
+                                {PLATFORM_LABELS[platform] || platform}
                               </Label>
                             </div>
                           );
