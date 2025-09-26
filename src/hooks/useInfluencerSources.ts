@@ -8,6 +8,7 @@ export interface InfluencerSource {
   user_id: string;
   influencer_id: string;
   influencer_name: string;
+  connector_handles: Record<string, unknown>;
   selected_platforms: string[];
   created_at: string;
   updated_at: string;
@@ -35,7 +36,10 @@ export function useInfluencerSources() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setInfluencerSources(data || []);
+      setInfluencerSources((data || []).map(item => ({
+        ...item,
+        connector_handles: item.connector_handles || {}
+      })));
     } catch (error) {
       console.error('Error fetching influencer sources:', error);
       toast({
@@ -49,20 +53,28 @@ export function useInfluencerSources() {
   };
 
   const addOrUpdateInfluencerSource = async (
-    influencerId: string, 
-    influencerName: string, 
-    selectedPlatforms: string[]
+    influencerId: string,
+    influencerName: string,
+    selectedPlatforms: string[],
+    connectorHandles?: Record<string, unknown>
   ) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
+      const existingSource = influencerSources.find(source => source.influencer_id === influencerId);
+      const hasProvidedHandles = connectorHandles && Object.keys(connectorHandles).length > 0;
+      const resolvedConnectorHandles = hasProvidedHandles
+        ? connectorHandles
+        : existingSource?.connector_handles || {};
+
       const { data, error } = await supabase
         .from('influencer_sources')
         .upsert({
           user_id: user.id,
           influencer_id: influencerId,
           influencer_name: influencerName,
-          selected_platforms: selectedPlatforms
+          selected_platforms: selectedPlatforms,
+          connector_handles: resolvedConnectorHandles
         }, {
           onConflict: 'user_id,influencer_id'
         })
@@ -70,13 +82,18 @@ export function useInfluencerSources() {
         .single();
 
       if (error) throw error;
-      
+
+      const normalizedData: InfluencerSource = {
+        ...(data as InfluencerSource),
+        connector_handles: (data as InfluencerSource).connector_handles || {}
+      };
+
       setInfluencerSources(prev => {
         const existing = prev.find(source => source.influencer_id === influencerId);
         if (existing) {
-          return prev.map(source => source.influencer_id === influencerId ? data : source);
+          return prev.map(source => source.influencer_id === influencerId ? normalizedData : source);
         } else {
-          return [...prev, data];
+          return [...prev, normalizedData];
         }
       });
 
@@ -84,8 +101,8 @@ export function useInfluencerSources() {
         title: "Success",
         description: `${influencerName} source preferences updated successfully.`
       });
-      
-      return data;
+
+      return normalizedData;
     } catch (error) {
       console.error('Error updating influencer source:', error);
       toast({
