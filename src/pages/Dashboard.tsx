@@ -323,6 +323,15 @@ const Dashboard = () => {
               <Button 
                 variant="outline" 
                 size="sm"
+                onClick={() => fetchContentItems({ showSyncIndicator: true })}
+                disabled={isSyncing}
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                {isSyncing ? 'Syncing...' : 'Sync Content'}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
                 onClick={() => setShowUploadSourcesModal(true)}
               >
                 <Upload className="h-4 w-4 mr-2" />
