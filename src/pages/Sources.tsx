@@ -6,24 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  Play,
-  MessageCircle,
+import { 
+  Play, 
+  MessageCircle, 
   Mic,
-  FileText,
+  FileText, 
   Mail,
   Search,
   Users,
   Edit,
   Trash2,
   CheckCircle2,
-  RefreshCw,
-  Loader2
+  RefreshCw
 } from "lucide-react";
 import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 type PlatformIdentifierMap = Partial<Record<string, string>>;
 
@@ -337,14 +335,9 @@ const Sources = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
   const [testingAggregator, setTestingAggregator] = useState(false);
- codex/add-sync-processing-after-influencer-source-update
-  const [syncingInfluencers, setSyncingInfluencers] = useState<Record<string, boolean>>({});
-
   const [platformIdentifierInputs, setPlatformIdentifierInputs] = useState<Record<string, Record<string, string>>>({});
- main
   const { toast } = useToast();
-  const { user } = useAuth();
-
+  
   const {
     influencerSources,
     loading,
@@ -354,102 +347,6 @@ const Sources = () => {
     getInfluencerPlatforms,
     isInfluencerAdded
   } = useInfluencerSources();
-
- codex/add-sync-processing-after-influencer-source-update
-  const isSyncingAnything = Object.values(syncingInfluencers).some(Boolean);
-
-  const triggerContentAggregation = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('No authenticated session');
-    }
-
-    const { data, error } = await supabase.functions.invoke('content-aggregator', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data?.success) {
-      throw new Error(data?.error || 'Content aggregation failed');
-    }
-
-    return data;
-  };
-
-  const broadcastDashboardRefresh = async () => {
-    if (!user) return;
-
-    const channel = supabase.channel('dashboard-content-updates');
-
-    try {
-      const status = await channel.subscribe();
-      if (status !== 'SUBSCRIBED') {
-        console.warn('Dashboard refresh channel subscription failed with status:', status);
-        return;
-      }
-      const sendStatus = await channel.send({
-        type: 'broadcast',
-        event: 'content_updated',
-        payload: {
-          userId: user.id,
-          triggeredAt: new Date().toISOString()
-        }
-      });
-      if (sendStatus !== 'ok') {
-        console.warn('Dashboard refresh broadcast returned status:', sendStatus);
-      }
-    } catch (error) {
-      console.error('Error broadcasting dashboard refresh:', error);
-    } finally {
-      supabase.removeChannel(channel);
-    }
-  };
-
-  const runSyncForInfluencer = async (
-    influencerId: string,
-    influencerName: string,
-    selectedPlatforms: string[],
-    options: { showToast?: boolean } = {}
-  ) => {
-    const { showToast = true } = options;
-
-    setSyncingInfluencers(prev => ({ ...prev, [influencerId]: true }));
-
-    try {
-      await addOrUpdateInfluencerSource(influencerId, influencerName, selectedPlatforms);
-      const aggregationResult = await triggerContentAggregation();
-      await broadcastDashboardRefresh();
-
-      if (showToast) {
-        const processedCount = aggregationResult?.processedCount ?? 0;
-        toast({
-          title: processedCount > 0 ? "Sync complete" : "Sync started",
-          description: processedCount > 0
-            ? `Processed ${processedCount} new content item${processedCount === 1 ? '' : 's'} for your dashboard.`
-            : "We'll refresh your dashboard as soon as new content is available."
-        });
-      }
-    } catch (error) {
-      console.error('Error syncing influencer content:', error);
-      toast({
-        title: "Sync failed",
-        description: "We couldn't process the selected platforms. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
-    } finally {
-      setSyncingInfluencers(prev => {
-        const updated = { ...prev };
-        delete updated[influencerId];
-        return updated;
-      });
-    }
-  };
 
  codex/extend-influencer-catalog-with-platform-identifiers
   const getInfluencerDefaults = (influencerId: string): PlatformIdentifierMap => {
@@ -490,7 +387,6 @@ const Sources = () => {
   }, [influencerSources]);
 
   const filteredInfluencers = influencerCatalog.filter(influencer =>
- main
 
   // Influencers list - financial experts and thought leaders
   const influencers = [
@@ -622,13 +518,9 @@ const Sources = () => {
     const newPlatforms = currentPlatforms.includes(platform)
       ? currentPlatforms.filter(p => p !== platform)
       : [...currentPlatforms, platform];
-
+    
     try {
- codex/add-sync-processing-after-influencer-source-update
-      await runSyncForInfluencer(influencerId, influencerName, newPlatforms);
-
       await addOrUpdateInfluencerSource(influencer.urls || {}, influencer.name, newPlatforms);
- main
  main
     } catch (error) {
       console.error('Error updating platforms:', error);
@@ -678,16 +570,12 @@ const Sources = () => {
 
   const handleSelectAllPlatforms = async (influencerId: string, influencerName: string) => {
     try {
- codex/add-sync-processing-after-influencer-source-update
-      await runSyncForInfluencer(influencerId, influencerName, [...availablePlatforms]);
-
       const identifiers = buildDefaultIdentifiers(influencerId, [...availablePlatforms]);
       setPlatformIdentifierInputs(prev => ({
         ...prev,
         [influencerId]: identifiers,
       }));
       await addOrUpdateInfluencerSource(influencerId, influencerName, [...availablePlatforms], identifiers);
- main
     } catch (error) {
       console.error('Error selecting all platforms:', error);
     }
@@ -695,13 +583,6 @@ const Sources = () => {
 
   const handleSelectAllInfluencers = async () => {
     try {
- codex/add-sync-processing-after-influencer-source-update
-      let processedAny = false;
-      for (const influencer of influencers) {
-        if (!isInfluencerAdded(influencer.id)) {
-          processedAny = true;
-          await runSyncForInfluencer(influencer.id, influencer.name, [...availablePlatforms], { showToast: false });
-
       for (const influencer of influencerCatalog) {
         if (!isInfluencerAdded(influencer.id)) {
           const defaultIdentifiers = buildDefaultIdentifiers(influencer.id, availablePlatforms);
@@ -710,15 +591,7 @@ const Sources = () => {
             [influencer.id]: defaultIdentifiers,
           }));
           await addOrUpdateInfluencerSource(influencer.id, influencer.name, [...availablePlatforms], defaultIdentifiers);
- main
         }
-      }
-
-      if (processedAny) {
-        toast({
-          title: "Bulk sync complete",
-          description: "All selected influencers are now syncing and your dashboard will update automatically."
-        });
       }
     } catch (error) {
       console.error('Error selecting all influencers:', error);
@@ -787,8 +660,7 @@ const Sources = () => {
               {influencerSources.map((source) => {
                 const influencer = influencerCatalog.find(inf => inf.id === source.influencer_id);
                 const isEditing = editingInfluencer === source.influencer_id;
-                const isSyncing = syncingInfluencers[source.influencer_id];
-
+                
                 return (
                   <div key={source.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
@@ -800,19 +672,12 @@ const Sources = () => {
                           </div>
                         </div>
                         <Badge variant="outline">{influencer?.category}</Badge>
-                        {isSyncing && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Syncing
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setEditingInfluencer(isEditing ? null : source.influencer_id)}
-                          disabled={isSyncing}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -820,12 +685,7 @@ const Sources = () => {
                           size="sm"
                           variant="ghost"
                           className="text-destructive"
- codex/add-sync-processing-after-influencer-source-update
-                          onClick={() => handleRemoveInfluencer(source.influencer_id)}
-                          disabled={isSyncing}
-
                           onClick={() => handleRemoveInfluencer(source.influencer_name)}
- main
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -845,12 +705,6 @@ const Sources = () => {
                               <Checkbox
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
- codex/add-sync-processing-after-influencer-source-update
-                                disabled={!isEditing || !!isSyncing}
-                                onCheckedChange={() =>
-                                  isEditing && handlePlatformToggle(source.influencer_id, source.influencer_name, platform)
-                                }
-
                                 disabled={!isEditing}
                                  onCheckedChange={() => {
                                    if (isEditing) {
@@ -862,9 +716,8 @@ const Sources = () => {
                                      handlePlatformToggle(influencer, platform);
                                    }
                                  }}
- main
                               />
-                              <Label
+                              <Label 
                                 htmlFor={`${source.influencer_id}-${platform}`}
                                 className={`flex items-center gap-1 cursor-pointer capitalize ${
                                   !isEditing ? 'opacity-50' : ''
@@ -948,15 +801,12 @@ const Sources = () => {
               <Button
                 onClick={handleSelectAllInfluencers}
                 variant="outline"
-                disabled={isSyncingAnything}
-                className="flex items-center gap-2"
               >
-                {isSyncingAnything && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isSyncingAnything ? 'Syncing...' : 'Select All People'}
+                Select All People
               </Button>
               <Button
                 onClick={testPodcastIngestion}
-                disabled={testingAggregator || isSyncingAnything}
+                disabled={testingAggregator}
                 variant="secondary"
                 className="flex items-center gap-2"
               >
@@ -980,16 +830,9 @@ const Sources = () => {
             {/* Available Influencers */}
             <div className="grid gap-4 max-h-96 overflow-y-auto">
               {filteredInfluencers.map((influencer) => {
- codex/add-sync-processing-after-influencer-source-update
-                const isAdded = isInfluencerAdded(influencer.id);
-                const selectedPlatforms = getInfluencerPlatforms(influencer.id);
-                const isSyncing = syncingInfluencers[influencer.id];
-
-
                 const isAdded = isInfluencerAdded(influencer.name);
                 const selectedPlatforms = getInfluencerPlatforms(influencer.name);
                 
- main
                 return (
                   <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
@@ -1001,19 +844,12 @@ const Sources = () => {
                           </div>
                         </div>
                         <Badge variant="outline">{influencer.category}</Badge>
-                        {isSyncing && (
-                          <Badge variant="secondary" className="flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Syncing
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleSelectAllPlatforms(influencer.id, influencer.name)}
-                          disabled={!!isSyncing}
                         >
                           Select All
                         </Button>
@@ -1053,17 +889,11 @@ const Sources = () => {
                               <Checkbox
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
- codex/add-sync-processing-after-influencer-source-update
-                                disabled={!!isSyncing}
-                                onCheckedChange={() =>
-                                  handlePlatformToggle(influencer.id, influencer.name, platform)
-
                                 onCheckedChange={() => 
                                   handlePlatformToggle(influencer, platform)
- main
                                 }
                               />
-                              <Label
+                              <Label 
                                 htmlFor={`${influencer.id}-${platform}`}
                                 className="flex items-center gap-1 cursor-pointer capitalize"
                               >
