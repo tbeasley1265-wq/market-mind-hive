@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Parser from 'rss-parser';
 import crypto from 'crypto';
-import { getSupabaseAdmin } from '../../src/server/supabase';
+import { getSupabaseAdmin } from '../../src/server/supabase-admin';
 
 const FEEDS: string[] = [
   'https://raoulpal.substack.com/feed',
@@ -42,13 +42,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           if (!error) inserted++;
         }
-      } catch (e) {
-        // continue to next feed
-      }
+      } catch {}
     }
 
     res.status(200).json({ ok: true, inserted });
   } catch (e:any) {
-    res.status(500).json({ ok: false, error: String(e?.message || e) });
+    res.status(500).json({ ok:false, error: e?.message || String(e) });
   }
 }
