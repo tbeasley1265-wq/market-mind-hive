@@ -19,4 +19,9 @@ create table if not exists public.item_tags (
 );
 
 alter table public.items enable row level security;
-create policy "read_items_all" on public.items for select using (true);
+do $$ begin
+  begin
+    create policy "read_items_all" on public.items for select using (true);
+  exception when duplicate_object then null;
+  end;
+end $$;
