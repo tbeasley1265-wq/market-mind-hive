@@ -65,19 +65,44 @@ export function useInfluencerSources() {
         Object.entries(platformIdentifiers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
       ) as Record<string, string>;
 
-      const { data, error } = await supabase
-        .from('influencer_sources')
-        .upsert({
-          user_id: user.id,
-          influencer_id: influencerId,
-          influencer_name: influencerName,
-          selected_platforms: selectedPlatforms,
-          platform_identifiers: sanitizedIdentifiers
-        }, {
-          onConflict: 'user_id,influencer_name' // Use name instead of id for conflict resolution
-        })
-        .select()
-        .single();
+      // Check if source already exists
+      const existing = influencerSources.find(source => source.influencer_name === influencerName);
+
+      let data;
+      let error;
+
+      if (existing) {
+        // Update existing source by ID
+        const result = await supabase
+          .from('influencer_sources')
+          .update({
+            influencer_id: influencerId,
+            selected_platforms: selectedPlatforms,
+            platform_identifiers: sanitizedIdentifiers
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new source
+        const result = await supabase
+          .from('influencer_sources')
+          .insert({
+            user_id: user.id,
+            influencer_id: influencerId,
+            influencer_name: influencerName,
+            selected_platforms: selectedPlatforms,
+            platform_identifiers: sanitizedIdentifiers
+          })
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
 
@@ -87,9 +112,8 @@ export function useInfluencerSources() {
           platform_identifiers: (data as any).platform_identifiers || {}
         } as InfluencerSource;
 
-        const existing = prev.find(source => source.influencer_name === influencerName);
         if (existing) {
-          return prev.map(source => source.influencer_name === influencerName ? normalizedData : source);
+          return prev.map(source => source.id === existing.id ? normalizedData : source);
         } else {
           return [...prev, normalizedData];
         }
