@@ -195,6 +195,35 @@ const Sources = () => {
     }
   };
 
+  const fixExistingSourceURLs = async () => {
+    try {
+      // Update each existing source with the correct URLs
+      for (const source of influencerSources) {
+        const influencer = influencers.find(inf => inf.id === source.influencer_id);
+        if (influencer && influencer.urls) {
+          await addOrUpdateInfluencerSource(
+            source.influencer_id,
+            source.influencer_name,
+            source.selected_platforms,
+            influencer.urls
+          );
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "All source URLs have been updated successfully!"
+      });
+    } catch (error) {
+      console.error('Error fixing sources:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update source URLs. Check the console for details.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const testPodcastIngestion = async () => {
     setTestingAggregator(true);
     try {
@@ -355,6 +384,13 @@ const Sources = () => {
                 variant="outline"
               >
                 Select All People
+              </Button>
+              <Button
+                onClick={fixExistingSourceURLs}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                Fix Source URLs
               </Button>
               <Button
                 onClick={testPodcastIngestion}
