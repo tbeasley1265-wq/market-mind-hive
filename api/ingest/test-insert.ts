@@ -5,38 +5,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const service = process.env.SUPABASE_SERVICE_ROLE;
-
-    // 0) Env sanity
     if (!url || !service) {
       return res.status(500).json({
         ok: false,
-        stage: 'env-check',
+        error: 'Missing Supabase envs',
         supabaseUrlPresent: !!url,
         supabaseServiceRolePresent: !!service,
-        error: 'Missing Supabase envs',
       });
     }
 
-    // 1) Admin client (service role bypasses RLS)
     const supabase = createClient(url, service, {
       auth: { persistSession: false },
       db: { schema: 'public' },
     });
 
-    // 2) Read test (prove DB reachable)
-    const readTest = await supabase.rpc('pg_sleep', { seconds: 0 }).catch(() => null); // harmless ping
-    const countResp = await supabase.from('items').select('id', { count: 'exact', head: true });
-    const preCount = (countResp as any)?.count ?? null;
-    if ((countResp as any)?.error) {
-      return res.status(500).json({
-        ok: false,
-        stage: 'read-count',
-        error: (countResp as any).error?.message || String((countResp as any).error),
-      });
-    }
+    // Pre-count (optional)
+    const pre = await supabase.from('items').select('id', { count: 'exact', head: true });
+    if (pre.error) throw pre.error;
 
-    // 3) Insert test row
-    const insertResp = await supabase.from('items').insert({
+    // Insert one test row
+    const ins = await supabase.from('items').insert({
       source_key: 'rss',
       external_id: 'manual-' + Date.now(),
       url: 'https://example.com/post',
@@ -45,30 +33,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       published_at: new Date().toISOString(),
       meta: { seed: true },
     });
+    if (ins.error) throw ins.error;
 
-    if (insertResp.error) {
-      return res.status(500).json({
-        ok: false,
-        stage: 'insert',
-        error: insertResp.error.message,
-        details: insertResp.error.details || null,
-        hint: insertResp.error.hint || null,
-        code: insertResp.error.code || null,
-      });
-    }
-
-    // 4) Recount
-    const postCountResp = await supabase.from('items').select('id', { count: 'exact', head: true });
-    const postCount = (postCountResp as any)?.count ?? null;
+    // Post-count (optional)
+    const post = await supabase.from('items').select('id', { count: 'exact', head: true });
+    if (post.error) throw post.error;
 
     return res.status(200).json({
       ok: true,
-      stage: 'done',
-      preCount,
-      postCount,
-      delta: (postCount ?? 0) - (preCount ?? 0),
+      preCount: pre.count ?? null,
+      postCount: post.count ?? null,
+      delta: (post.count ?? 0) - (pre.count ?? 0),
     });
   } catch (e: any) {
-    return res.status(500).json({ ok: false, stage: 'catch', error: e?.message || String(e) });
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
 }
