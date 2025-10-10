@@ -169,7 +169,7 @@ serve(async (req) => {
     const results: any[] = [];
     const errors: any[] = [];
 
-    // Process EVERY influencer source (removed the .slice(0, 2) limit)
+    // Process EVERY influencer source
     for (const source of (influencerSources || [])) {
       console.log(`\n========================================`);
       console.log(`Processing source: ${source.influencer_name}`);
@@ -231,7 +231,6 @@ serve(async (req) => {
                   if (!existing) {
                     console.log(`Processing new YouTube video: ${item.snippet.title}`);
                     
-                    // Use service role for invoking other functions
                     const invokeClient = createClient(
                       Deno.env.get('SUPABASE_URL') ?? '',
                       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -241,7 +240,7 @@ serve(async (req) => {
                       body: {
                         videoUrl: videoUrl,
                         summaryLength: 'standard',
-                        userId: userId // Pass userId explicitly
+                        userId: userId
                       }
                     });
 
@@ -279,7 +278,7 @@ serve(async (req) => {
           }
         }
 
-        // Process Podcast content
+        // Process Podcast content with DEEPGRAM
         if (source.selected_platforms?.includes('podcasts')) {
           const feedUrl = validatePlatformIdentifier(sourceUrls, 'podcasts');
           
@@ -350,46 +349,48 @@ serve(async (req) => {
                       console.log(`Processing new podcast episode: ${title}`);
                       
                       try {
-                        const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-                        if (!OPENAI_API_KEY) {
-                          throw new Error('OpenAI API key not configured');
+                        // ✅ DEEPGRAM INTEGRATION - NO FILE SIZE LIMIT!
+                        const DEEPGRAM_API_KEY = Deno.env.get('DEEPGRAM_API_KEY');
+                        if (!DEEPGRAM_API_KEY) {
+                          throw new Error('Deepgram API key not configured');
                         }
 
-                        console.log(`Downloading audio from: ${audioUrl}`);
-                        const audioResponse = await fetch(audioUrl);
-                        if (!audioResponse.ok) {
-                          throw new Error(`Failed to download audio: ${audioResponse.status}`);
-                        }
-
-                        const audioBuffer = await audioResponse.arrayBuffer();
+                        console.log(`🎙️ Transcribing with Deepgram (URL: ${audioUrl})`);
                         
-                        const formData = new FormData();
-                        const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-                        formData.append('file', blob, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`);
-                        formData.append('model', 'whisper-1');
-                        formData.append('response_format', 'text');
-
-                        console.log(`Transcribing audio with Whisper API`);
-                        const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                          },
-                          body: formData
-                        });
+                        // Deepgram transcribes directly from URL - no download needed!
+                        const transcriptionResponse = await fetch(
+                          'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&paragraphs=true&diarize=true',
+                          {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              url: audioUrl
+                            })
+                          }
+                        );
 
                         if (!transcriptionResponse.ok) {
                           const errorText = await transcriptionResponse.text();
-                          throw new Error(`Transcription failed: ${transcriptionResponse.status} - ${errorText}`);
+                          throw new Error(`Deepgram transcription failed: ${transcriptionResponse.status} - ${errorText}`);
                         }
 
-                        const transcript = await transcriptionResponse.text();
-                        console.log(`Transcript length: ${transcript.length} characters`);
+                        const transcriptionData = await transcriptionResponse.json();
+                        
+                        // Extract transcript from Deepgram response
+                        const transcript = transcriptionData.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+                        
+                        if (!transcript || transcript.length < 100) {
+                          throw new Error(`Transcription returned empty or too short: ${transcript.length} chars`);
+                        }
+
+                        console.log(`✅ Transcribed ${transcript.length} characters`);
 
                         const detectedPlatform = detectPlatformFromUrl(episodeUrl);
                         const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
 
-                        // Use service role for invoking other functions
                         const invokeClient = createClient(
                           Deno.env.get('SUPABASE_URL') ?? '',
                           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -458,8 +459,12 @@ serve(async (req) => {
                             title: title,
                             author: detectedAuthor,
                             url: episodeUrl,
-                            status: 'processed'
+                            status: 'processed',
+                            transcript_length: transcript.length,
+                            guests: uniqueGuests
                           });
+                          
+                          console.log(`✅ Successfully processed podcast: ${title}`);
                         }
                       } catch (episodeError) {
                         console.error(`Error processing podcast episode ${title}:`, episodeError);
@@ -531,7 +536,6 @@ serve(async (req) => {
                     if (!existing) {
                       console.log(`Processing new newsletter article: ${title}`);
                       
-                      // Use service role for invoking
                       const invokeClient = createClient(
                         Deno.env.get('SUPABASE_URL') ?? '',
                         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
