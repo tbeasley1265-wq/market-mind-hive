@@ -17,7 +17,8 @@ import {
   Edit,
   Trash2,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ const Sources = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
   const [testingAggregator, setTestingAggregator] = useState(false);
+  const [findingUrls, setFindingUrls] = useState<string | null>(null); // Track which influencer is being processed
   const { toast } = useToast();
   
   const {
@@ -47,57 +49,77 @@ const Sources = () => {
       name: "Raoul Pal", 
       platform: "Real Vision", 
       followers: "1.2M", 
-      category: "Macro",
-      urls: {
-        youtube: "UCJ9m8jMgFo-BOmNVYdb_LQQ",
-        podcasts: "https://feeds.megaphone.fm/realvision",
-        newsletters: "https://www.realvision.com/feed"
-      }
+      category: "Macro"
     },
     { 
       id: "anthony-pompliano", 
       name: "Anthony Pompliano", 
       platform: "YouTube", 
       followers: "1.8M", 
-      category: "Crypto",
-      urls: {
-        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
-        podcasts: "https://feeds.simplecast.com/7y1CbAbN",
-        newsletters: "https://pomp.substack.com/feed"
-      }
+      category: "Crypto"
     },
     { 
       id: "lex-fridman", 
       name: "Lex Fridman", 
       platform: "MIT/Podcast", 
       followers: "2.8M", 
-      category: "AI",
-      urls: {
-        youtube: "UCSHZKyawb77ixDdsGog4iWA",
-        podcasts: "https://lexfridman.com/feed/podcast/",
-        newsletters: "https://lexfridman.com/feed/"
-      }
+      category: "AI"
     },
     { 
       id: "coin-bureau", 
       name: "Coin Bureau (Guy)", 
       platform: "YouTube", 
       followers: "2.1M", 
-      category: "Crypto",
-      urls: {
-        youtube: "UCqK_GSMbpiV8spgD3ZGloSw",
-        newsletters: "https://coinbureau.com/feed/"
-      }
+      category: "Crypto"
     },
     { 
       id: "benjamin-cowen", 
       name: "Benjamin Cowen", 
       platform: "YouTube", 
       followers: "1.8M", 
-      category: "Crypto",
-      urls: {
-        youtube: "UCRvqjQPSeaWn-uEx-w0XOIg"
-      }
+      category: "Crypto"
+    },
+    { 
+      id: "michael-saylor", 
+      name: "Michael Saylor", 
+      platform: "MicroStrategy", 
+      followers: "3.5M", 
+      category: "Bitcoin"
+    },
+    { 
+      id: "balaji-srinivasan", 
+      name: "Balaji Srinivasan", 
+      platform: "Twitter", 
+      followers: "900K", 
+      category: "Crypto"
+    },
+    { 
+      id: "cathie-wood", 
+      name: "Cathie Wood", 
+      platform: "ARK Invest", 
+      followers: "1.3M", 
+      category: "Innovation"
+    },
+    { 
+      id: "the-pomp-podcast", 
+      name: "The Pomp Podcast", 
+      platform: "Podcast", 
+      followers: "500K", 
+      category: "Crypto"
+    },
+    { 
+      id: "lyn-alden", 
+      name: "Lyn Alden", 
+      platform: "Newsletter", 
+      followers: "800K", 
+      category: "Macro"
+    },
+    { 
+      id: "ray-dalio", 
+      name: "Ray Dalio", 
+      platform: "Bridgewater", 
+      followers: "2.1M", 
+      category: "Macro"
     }
   ];
 
@@ -129,6 +151,43 @@ const Sources = () => {
     }
   };
 
+  // NEW: AI-powered URL finder
+  const findPlatformUrls = async (influencerName: string, selectedPlatforms: string[]) => {
+    try {
+      console.log(`🔍 Finding URLs for ${influencerName}, platforms: ${selectedPlatforms.join(', ')}`);
+      
+      const { data, error } = await supabase.functions.invoke('ai-url-finder', {
+        body: {
+          influencerName,
+          selectedPlatforms
+        }
+      });
+
+      if (error) {
+        console.error('AI URL finder error:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to find URLs');
+      }
+
+      console.log('✅ Found URLs:', data.platformIdentifiers);
+      console.log(`📊 Found ${data.foundCount} of ${data.requestedCount} platforms`);
+      
+      return {
+        platformIdentifiers: data.platformIdentifiers,
+        foundCount: data.foundCount,
+        requestedCount: data.requestedCount,
+        confidence: data.confidence
+      };
+    } catch (error) {
+      console.error('Error finding platform URLs:', error);
+      throw error;
+    }
+  };
+
+  // UPDATED: handlePlatformToggle with AI integration
   const handlePlatformToggle = async (
     influencerId: string,
     influencerName: string,
@@ -136,19 +195,80 @@ const Sources = () => {
     platformIdentifiers: Record<string, string | undefined>
   ) => {
     const currentPlatforms = getInfluencerPlatforms(influencerName);
-    const newPlatforms = currentPlatforms.includes(platform)
-      ? currentPlatforms.filter(p => p !== platform)
-      : [...currentPlatforms, platform];
+    const isAdding = !currentPlatforms.includes(platform);
+    const newPlatforms = isAdding
+      ? [...currentPlatforms, platform]
+      : currentPlatforms.filter(p => p !== platform);
 
+    // If removing platform, just update without AI
+    if (!isAdding) {
+      try {
+        await addOrUpdateInfluencerSource(
+          influencerId,
+          influencerName,
+          newPlatforms,
+          platformIdentifiers
+        );
+        
+        toast({
+          title: "Platform Removed",
+          description: `Removed ${platform} from ${influencerName}`
+        });
+      } catch (error) {
+        console.error('Error removing platform:', error);
+        toast({
+          title: "Error",
+          description: "Failed to remove platform",
+          variant: "destructive"
+        });
+      }
+      return;
+    }
+
+    // If adding platform, use AI to find URL
+    setFindingUrls(influencerId);
+    
     try {
+      // Call AI to find URLs for the new platform
+      const result = await findPlatformUrls(influencerName, [platform]);
+      
+      // Merge with existing identifiers
+      const mergedIdentifiers = {
+        ...platformIdentifiers,
+        ...result.platformIdentifiers
+      };
+
+      // Save to database
       await addOrUpdateInfluencerSource(
         influencerId,
         influencerName,
         newPlatforms,
-        platformIdentifiers
+        mergedIdentifiers
       );
+
+      // Show success message
+      if (result.foundCount > 0) {
+        toast({
+          title: "Platform Added!",
+          description: `✅ Found and added ${platform} for ${influencerName}`
+        });
+      } else {
+        toast({
+          title: "Platform Added (Manual Setup Needed)",
+          description: `⚠️ Added ${platform} but couldn't find URL automatically. Use "Fix Source URLs" to add it manually.`,
+          variant: "default"
+        });
+      }
+      
     } catch (error) {
-      console.error('Error updating platforms:', error);
+      console.error('Error adding platform:', error);
+      toast({
+        title: "Error",
+        description: `Failed to add ${platform}. Please try again.`,
+        variant: "destructive"
+      });
+    } finally {
+      setFindingUrls(null);
     }
   };
 
@@ -156,64 +276,175 @@ const Sources = () => {
     try {
       await removeInfluencerSource(influencerName);
       setEditingInfluencer(null);
+      
+      toast({
+        title: "Removed",
+        description: `Removed ${influencerName} from your sources`
+      });
     } catch (error) {
       console.error('Error removing influencer:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove influencer",
+        variant: "destructive"
+      });
     }
   };
 
+  // UPDATED: handleSelectAllPlatforms with AI integration
   const handleSelectAllPlatforms = async (
     influencerId: string,
     influencerName: string,
     platformIdentifiers: Record<string, string | undefined>
   ) => {
+    setFindingUrls(influencerId);
+    
     try {
+      // Call AI to find all platform URLs
+      toast({
+        title: "Finding URLs...",
+        description: `🔍 Using AI to find all platform URLs for ${influencerName}`,
+      });
+
+      const result = await findPlatformUrls(influencerName, availablePlatforms);
+      
+      // Merge with existing identifiers
+      const mergedIdentifiers = {
+        ...platformIdentifiers,
+        ...result.platformIdentifiers
+      };
+
+      // Save to database with all platforms selected
       await addOrUpdateInfluencerSource(
         influencerId,
         influencerName,
         [...availablePlatforms],
-        platformIdentifiers
+        mergedIdentifiers
       );
+
+      // Show detailed success message
+      if (result.foundCount === result.requestedCount) {
+        toast({
+          title: "All Platforms Added!",
+          description: `✅ Successfully found all ${result.foundCount} platforms for ${influencerName}`,
+        });
+      } else if (result.foundCount > 0) {
+        toast({
+          title: "Partially Added",
+          description: `⚠️ Found ${result.foundCount} of ${result.requestedCount} platforms for ${influencerName}. You can add missing ones manually.`,
+        });
+      } else {
+        toast({
+          title: "Added (Manual Setup Needed)",
+          description: `❌ Couldn't find URLs automatically for ${influencerName}. Please use "Fix Source URLs" to add them manually.`,
+          variant: "default"
+        });
+      }
+      
     } catch (error) {
       console.error('Error selecting all platforms:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add all platforms. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setFindingUrls(null);
     }
   };
 
   const handleSelectAllInfluencers = async () => {
+    setFindingUrls('all');
+    
     try {
+      let successCount = 0;
+      let errorCount = 0;
+
       for (const influencer of influencers) {
-        if (!isInfluencerAdded(influencer.id)) {
-          await addOrUpdateInfluencerSource(
-            influencer.id,
-            influencer.name,
-            [...availablePlatforms],
-            influencer.urls || {}
-          );
+        if (!isInfluencerAdded(influencer.name)) {
+          try {
+            // Find URLs for this influencer
+            const result = await findPlatformUrls(influencer.name, availablePlatforms);
+            
+            // Save to database
+            await addOrUpdateInfluencerSource(
+              influencer.id,
+              influencer.name,
+              [...availablePlatforms],
+              result.platformIdentifiers
+            );
+            
+            successCount++;
+          } catch (error) {
+            console.error(`Error adding ${influencer.name}:`, error);
+            errorCount++;
+          }
         }
       }
+
+      if (errorCount === 0) {
+        toast({
+          title: "All Influencers Added!",
+          description: `✅ Successfully added ${successCount} influencers with auto-discovered URLs`,
+        });
+      } else {
+        toast({
+          title: "Partially Added",
+          description: `Added ${successCount} influencers, but ${errorCount} failed. Check console for details.`,
+        });
+      }
+      
     } catch (error) {
       console.error('Error selecting all influencers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add all influencers",
+        variant: "destructive"
+      });
+    } finally {
+      setFindingUrls(null);
     }
   };
 
   const fixExistingSourceURLs = async () => {
+    setFindingUrls('fixing');
+    
     try {
-      // Update each existing source with the correct URLs
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Update each existing source with AI-discovered URLs
       for (const source of influencerSources) {
-        const influencer = influencers.find(inf => inf.id === source.influencer_id);
-        if (influencer && influencer.urls) {
+        try {
+          // Find URLs using AI
+          const result = await findPlatformUrls(source.influencer_name, source.selected_platforms);
+          
+          // Update the source
           await addOrUpdateInfluencerSource(
             source.influencer_id,
             source.influencer_name,
             source.selected_platforms,
-            influencer.urls
+            result.platformIdentifiers
           );
+          
+          successCount++;
+        } catch (error) {
+          console.error(`Error fixing ${source.influencer_name}:`, error);
+          errorCount++;
         }
       }
       
-      toast({
-        title: "Success",
-        description: "All source URLs have been updated successfully!"
-      });
+      if (errorCount === 0) {
+        toast({
+          title: "All URLs Fixed!",
+          description: `✅ Successfully updated ${successCount} sources with AI-discovered URLs`
+        });
+      } else {
+        toast({
+          title: "Partially Fixed",
+          description: `Fixed ${successCount} sources, but ${errorCount} failed. Check console for details.`
+        });
+      }
     } catch (error) {
       console.error('Error fixing sources:', error);
       toast({
@@ -221,6 +452,8 @@ const Sources = () => {
         description: "Failed to update source URLs. Check the console for details.",
         variant: "destructive"
       });
+    } finally {
+      setFindingUrls(null);
     }
   };
 
@@ -266,7 +499,7 @@ const Sources = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Content Sources</h1>
           <p className="text-muted-foreground">
-            Select financial influencers and experts, then choose which platforms to monitor for their content.
+            Select financial influencers and experts, then choose which platforms to monitor. AI will automatically find their URLs.
           </p>
         </div>
 
@@ -285,11 +518,9 @@ const Sources = () => {
             <CardContent className="space-y-4">
               {influencerSources.map((source) => {
                 const influencer = influencers.find(inf => inf.id === source.influencer_id);
-                const mergedIdentifiers = {
-                  ...(source.platform_identifiers || {}),
-                  ...(influencer?.urls || {})
-                };
+                const mergedIdentifiers = source.platform_identifiers || {};
                 const isEditing = editingInfluencer === source.influencer_id;
+                const isProcessing = findingUrls === source.influencer_id;
                 
                 return (
                   <div key={source.id} className="p-4 border rounded-lg">
@@ -302,12 +533,19 @@ const Sources = () => {
                           </div>
                         </div>
                         <Badge variant="outline">{influencer?.category}</Badge>
+                        {isProcessing && (
+                          <Badge variant="secondary" className="animate-pulse">
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Finding URLs...
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setEditingInfluencer(isEditing ? null : source.influencer_id)}
+                          disabled={isProcessing}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -316,6 +554,7 @@ const Sources = () => {
                           variant="ghost"
                           className="text-destructive"
                           onClick={() => handleRemoveInfluencer(source.influencer_name)}
+                          disabled={isProcessing}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -335,9 +574,9 @@ const Sources = () => {
                               <Checkbox
                                 id={`${source.influencer_id}-${platform}`}
                                 checked={isSelected}
-                                disabled={!isEditing}
+                                disabled={!isEditing || isProcessing}
                                 onCheckedChange={() => {
-                                  if (isEditing) {
+                                  if (isEditing && !isProcessing) {
                                     handlePlatformToggle(
                                       source.influencer_id,
                                       source.influencer_name,
@@ -350,7 +589,7 @@ const Sources = () => {
                               <Label 
                                 htmlFor={`${source.influencer_id}-${platform}`}
                                 className={`flex items-center gap-1 cursor-pointer capitalize ${
-                                  !isEditing ? 'opacity-50' : ''
+                                  !isEditing || isProcessing ? 'opacity-50' : ''
                                 }`}
                               >
                                 <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
@@ -376,25 +615,44 @@ const Sources = () => {
               Add People & Platforms
             </CardTitle>
             <div className="text-sm text-muted-foreground mb-4">
-              Browse and add influential voices in finance, crypto, and technology
+              Browse and add influential voices. AI will automatically find their platform URLs.
             </div>
             <div className="flex gap-2 mb-4">
               <Button
                 onClick={handleSelectAllInfluencers}
                 variant="outline"
+                disabled={findingUrls !== null}
               >
-                Select All People
+                {findingUrls === 'all' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Finding URLs...
+                  </>
+                ) : (
+                  'Select All People'
+                )}
               </Button>
               <Button
                 onClick={fixExistingSourceURLs}
                 variant="outline"
                 className="flex items-center gap-2"
+                disabled={findingUrls !== null || influencerSources.length === 0}
               >
-                Fix Source URLs
+                {findingUrls === 'fixing' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Fixing URLs...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Fix Source URLs
+                  </>
+                )}
               </Button>
               <Button
                 onClick={testPodcastIngestion}
-                disabled={testingAggregator}
+                disabled={testingAggregator || findingUrls !== null}
                 variant="secondary"
                 className="flex items-center gap-2"
               >
@@ -420,6 +678,7 @@ const Sources = () => {
               {filteredInfluencers.map((influencer) => {
                 const isAdded = isInfluencerAdded(influencer.name);
                 const selectedPlatforms = getInfluencerPlatforms(influencer.name);
+                const isProcessing = findingUrls === influencer.id;
                 
                 return (
                   <div key={influencer.id} className="p-4 border rounded-lg space-y-3">
@@ -432,6 +691,12 @@ const Sources = () => {
                           </div>
                         </div>
                         <Badge variant="outline">{influencer.category}</Badge>
+                        {isProcessing && (
+                          <Badge variant="secondary" className="animate-pulse">
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Finding URLs...
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -441,11 +706,16 @@ const Sources = () => {
                             handleSelectAllPlatforms(
                               influencer.id,
                               influencer.name,
-                              influencer.urls || {}
+                              {}
                             )
                           }
+                          disabled={findingUrls !== null}
                         >
-                          Select All
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Select All'
+                          )}
                         </Button>
                         {isAdded && (
                           <Badge variant="default" className="bg-green-500">
@@ -458,7 +728,9 @@ const Sources = () => {
                     
                     {/* Platform Selection */}
                     <div className="space-y-2">
-                      <div className="text-sm font-medium text-muted-foreground">Select Content Platforms:</div>
+                      <div className="text-sm font-medium text-muted-foreground">
+                        Select Content Platforms (AI will find URLs):
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {availablePlatforms.map((platform) => {
                           const Icon = getPlatformIcon(platform);
@@ -469,18 +741,21 @@ const Sources = () => {
                               <Checkbox
                                 id={`${influencer.id}-${platform}`}
                                 checked={isSelected}
+                                disabled={findingUrls !== null}
                                 onCheckedChange={() =>
                                   handlePlatformToggle(
                                     influencer.id,
                                     influencer.name,
                                     platform,
-                                    influencer.urls || {}
+                                    {}
                                   )
                                 }
                               />
                               <Label 
                                 htmlFor={`${influencer.id}-${platform}`}
-                                className="flex items-center gap-1 cursor-pointer capitalize"
+                                className={`flex items-center gap-1 cursor-pointer capitalize ${
+                                  findingUrls !== null ? 'opacity-50' : ''
+                                }`}
                               >
                                 <Icon className={`h-4 w-4 ${getPlatformColor(platform)}`} />
                                 {platform}
