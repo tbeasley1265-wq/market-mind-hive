@@ -12,44 +12,78 @@ serve(async (req) => {
   }
 
   try {
-    // Get the user from the request first
-    const authHeader = req.headers.get('Authorization');
-    console.log(`Auth header received: ${authHeader ? 'present' : 'missing'}`);
-    
-    if (!authHeader) {
-      console.log('No authorization header found');
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    let userId: string;
+    let authHeader: string | null = null;
+    let supabaseClient: any;
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader }
-        }
+    // Parse request body
+    const bodyText = await req.text();
+    let body: any = {};
+    
+    if (bodyText) {
+      try {
+        body = JSON.parse(bodyText);
+      } catch {
+        // Not JSON, that's okay
       }
-    );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    console.log(`User authentication result: ${user ? `success for user ${user.id}` : 'failed'}`);
-    
-    if (userError) {
-      console.log(`User error: ${userError.message}`);
-    }
-    
-    if (userError || !user) {
-      console.log('Authentication failed, returning 401');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
     }
 
-    console.log(`Starting content aggregation for user: ${user.id}`);
+    // AUTOMATED MODE: Called by cron job with userId in body
+    if (body.userId && body.automated === true) {
+      console.log('📅 AUTOMATED MODE: Running for user:', body.userId);
+      userId = body.userId;
+      
+      // Use service role client for automated runs
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      // Verify user exists
+      const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
+      if (userError || !userData) {
+        throw new Error('Invalid user ID');
+      }
+
+      console.log(`✓ Verified user: ${userId}`);
+      
+    } else {
+      // MANUAL MODE: Called by user with auth header
+      authHeader = req.headers.get('Authorization');
+      console.log(`🔧 MANUAL MODE: Auth header ${authHeader ? 'present' : 'missing'}`);
+      
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'No authorization header' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: authHeader }
+          }
+        }
+      );
+
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      userId = user.id;
+    }
+
+    console.log(`\n========================================`);
+    console.log(`Starting content aggregation for user: ${userId}`);
+    console.log(`========================================\n`);
 
     // Enhanced platform detection functions
     const detectPlatformFromUrl = (url: string) => {
@@ -80,24 +114,20 @@ serve(async (req) => {
       }
     };
 
-    // NEW: Helper to safely extract platform identifiers
+    // Helper to safely extract platform identifiers
     const extractPlatformIdentifiers = (source: any): Record<string, string> => {
       try {
-        // Check if platform_identifiers exists and is a valid object
         if (source.platform_identifiers && 
             typeof source.platform_identifiers === 'object' && 
             !Array.isArray(source.platform_identifiers) &&
             Object.keys(source.platform_identifiers).length > 0) {
-          console.log(`✓ Valid platform_identifiers found for ${source.influencer_name}:`, source.platform_identifiers);
           return source.platform_identifiers;
         }
 
-        // Fallback: try parsing influencer_id if it's a JSON string
         if (source.influencer_id && typeof source.influencer_id === 'string') {
           try {
             const parsed = JSON.parse(source.influencer_id);
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              console.log(`✓ Parsed identifiers from influencer_id for ${source.influencer_name}:`, parsed);
               return parsed;
             }
           } catch (parseError) {
@@ -113,22 +143,21 @@ serve(async (req) => {
       }
     };
 
-    // NEW: Validate that required identifier exists for platform
+    // Validate that required identifier exists for platform
     const validatePlatformIdentifier = (sourceUrls: Record<string, string>, platform: string): string | null => {
       const identifier = sourceUrls[platform];
       if (!identifier || identifier.trim() === '') {
         console.warn(`⚠ Missing identifier for platform: ${platform}`);
         return null;
       }
-      console.log(`✓ Found identifier for ${platform}: ${identifier}`);
       return identifier;
     };
 
-    // Fetch user's influencer sources
+    // Fetch user's influencer sources - NO LIMIT, process ALL sources
     const { data: influencerSources, error: sourcesError } = await supabaseClient
       .from('influencer_sources')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (sourcesError) {
       throw sourcesError;
@@ -140,24 +169,23 @@ serve(async (req) => {
     const results: any[] = [];
     const errors: any[] = [];
 
-    // Process each influencer source (limit to 2 to avoid memory issues)
-    for (const source of (influencerSources || []).slice(0, 2)) {
+    // Process EVERY influencer source (removed the .slice(0, 2) limit)
+    for (const source of (influencerSources || [])) {
       console.log(`\n========================================`);
       console.log(`Processing source: ${source.influencer_name}`);
       console.log(`Selected platforms: ${source.selected_platforms?.join(', ') || 'none'}`);
       
       try {
-        // Extract platform identifiers using the new helper
         const sourceUrls = extractPlatformIdentifiers(source);
         
         if (Object.keys(sourceUrls).length === 0) {
-          const errorMsg = `No platform identifiers configured for ${source.influencer_name}. Please update the source with valid URLs.`;
+          const errorMsg = `No platform identifiers configured for ${source.influencer_name}`;
           console.error(`❌ ${errorMsg}`);
           errors.push({
             source: source.influencer_name,
             error: errorMsg
           });
-          continue; // Skip this source
+          continue;
         }
 
         // Process YouTube content
@@ -168,7 +196,7 @@ serve(async (req) => {
             errors.push({
               source: source.influencer_name,
               platform: 'youtube',
-              error: 'YouTube selected but no channel ID found in platform_identifiers'
+              error: 'YouTube selected but no channel ID found'
             });
           } else {
             const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
@@ -177,13 +205,13 @@ serve(async (req) => {
               errors.push({
                 source: source.influencer_name,
                 platform: 'youtube',
-                error: 'YouTube API key not configured in environment'
+                error: 'YouTube API key not configured'
               });
             } else {
               console.log(`Fetching YouTube content for ${source.influencer_name} (Channel: ${channelId})`);
               
               const searchResponse = await fetch(
-                `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=3`
+                `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${channelId}&part=snippet&order=date&type=video&maxResults=5`
               );
 
               if (searchResponse.ok) {
@@ -193,24 +221,28 @@ serve(async (req) => {
                 for (const item of searchData.items || []) {
                   const videoUrl = `https://www.youtube.com/watch?v=${item.id.videoId}`;
                   
-                  // Check if we already have this video
                   const { data: existing } = await supabaseClient
                     .from('content_items')
                     .select('id')
                     .eq('original_url', videoUrl)
-                    .eq('user_id', user.id)
+                    .eq('user_id', userId)
                     .single();
 
                   if (!existing) {
                     console.log(`Processing new YouTube video: ${item.snippet.title}`);
                     
-                    // Process video through video-summarizer
-                    const videoResponse = await supabaseClient.functions.invoke('video-summarizer', {
+                    // Use service role for invoking other functions
+                    const invokeClient = createClient(
+                      Deno.env.get('SUPABASE_URL') ?? '',
+                      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+                    );
+
+                    const videoResponse = await invokeClient.functions.invoke('video-summarizer', {
                       body: {
                         videoUrl: videoUrl,
-                        summaryLength: 'standard'
-                      },
-                      headers: { Authorization: authHeader }
+                        summaryLength: 'standard',
+                        userId: userId // Pass userId explicitly
+                      }
                     });
 
                     if (videoResponse.data?.processed) {
@@ -255,21 +287,20 @@ serve(async (req) => {
             errors.push({
               source: source.influencer_name,
               platform: 'podcasts',
-              error: 'Podcasts selected but no RSS feed URL found in platform_identifiers'
+              error: 'Podcasts selected but no RSS feed URL found'
             });
           } else {
-            console.log(`Fetching podcast content for ${source.influencer_name} (Feed: ${feedUrl})`);
+            console.log(`Fetching podcast content for ${source.influencer_name}`);
             
             try {
               const feedResponse = await fetch(feedUrl);
               if (feedResponse.ok) {
                 const feedText = await feedResponse.text();
                 
-                // Parse podcast RSS feed
                 const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
                 console.log(`Found ${itemMatches.length} podcast episodes in feed`);
                 
-                for (const itemMatch of itemMatches.slice(0, 2)) {
+                for (const itemMatch of itemMatches.slice(0, 3)) {
                   const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
                   const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
                   const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
@@ -285,7 +316,7 @@ serve(async (req) => {
                     const pubDateStr = pubDateMatch ? pubDateMatch[1]?.trim() : '';
                     const durationStr = durationMatch ? durationMatch[1]?.trim() : '';
 
-                    // Parse duration to seconds
+                    // Parse duration
                     let duration = 0;
                     if (durationStr) {
                       const parts = durationStr.split(':').map(p => parseInt(p) || 0);
@@ -298,7 +329,7 @@ serve(async (req) => {
                       }
                     }
 
-                    // Parse publication date
+                    // Parse date
                     let publishedDate = null;
                     if (pubDateStr) {
                       try {
@@ -308,25 +339,23 @@ serve(async (req) => {
                       }
                     }
 
-                    // Check if we already have this episode
                     const { data: existing } = await supabaseClient
                       .from('podcast_episodes')
                       .select('id')
                       .eq('episode_url', episodeUrl)
-                      .eq('user_id', user.id)
+                      .eq('user_id', userId)
                       .single();
 
                     if (!existing) {
                       console.log(`Processing new podcast episode: ${title}`);
                       
                       try {
-                        // Download and transcribe audio
-                        console.log(`Downloading audio from: ${audioUrl}`);
                         const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
                         if (!OPENAI_API_KEY) {
                           throw new Error('OpenAI API key not configured');
                         }
 
+                        console.log(`Downloading audio from: ${audioUrl}`);
                         const audioResponse = await fetch(audioUrl);
                         if (!audioResponse.ok) {
                           throw new Error(`Failed to download audio: ${audioResponse.status}`);
@@ -334,7 +363,6 @@ serve(async (req) => {
 
                         const audioBuffer = await audioResponse.arrayBuffer();
                         
-                        // Create FormData for Whisper API
                         const formData = new FormData();
                         const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
                         formData.append('file', blob, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`);
@@ -358,28 +386,31 @@ serve(async (req) => {
                         const transcript = await transcriptionResponse.text();
                         console.log(`Transcript length: ${transcript.length} characters`);
 
-                        // Auto-detect platform and author from URL
                         const detectedPlatform = detectPlatformFromUrl(episodeUrl);
                         const detectedAuthor = detectAuthorFromUrl(episodeUrl, source.influencer_name);
-                        console.log(`Auto-detected platform: ${detectedPlatform}, author: ${detectedAuthor}`);
 
-                        // Process transcript through content-processor for summarization
-                        const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                        // Use service role for invoking other functions
+                        const invokeClient = createClient(
+                          Deno.env.get('SUPABASE_URL') ?? '',
+                          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+                        );
+
+                        const contentResponse = await invokeClient.functions.invoke('content-processor', {
                           body: {
                             title: title,
                             content: transcript,
                             author: detectedAuthor,
                             platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
                             originalUrl: episodeUrl,
-                            summaryLength: 'standard'
-                          },
-                          headers: { Authorization: authHeader }
+                            summaryLength: 'standard',
+                            userId: userId
+                          }
                         });
 
                         if (contentResponse.data?.processed) {
                           const processedData = contentResponse.data.data;
 
-                          // Extract guests from transcript (simple pattern matching)
+                          // Extract guests
                           const guests: string[] = [];
                           const guestPatterns = [
                             /(?:with|featuring|guest|joined by)\s+([A-Z][a-zA-Z\s]+)/gi,
@@ -395,16 +426,14 @@ serve(async (req) => {
                             }
                           }
 
-                          // Remove duplicates and clean up
                           const uniqueGuests = [...new Set(guests)]
                             .filter(g => g.length > 2 && g.length < 50)
-                            .slice(0, 5); // Limit to 5 guests
+                            .slice(0, 5);
 
-                          // Store in podcast_episodes table
                           const { error: insertError } = await supabaseClient
                             .from('podcast_episodes')
                             .insert({
-                              user_id: user.id,
+                              user_id: userId,
                               podcast_name: detectedAuthor,
                               episode_title: title,
                               episode_url: episodeUrl,
@@ -429,19 +458,16 @@ serve(async (req) => {
                             title: title,
                             author: detectedAuthor,
                             url: episodeUrl,
-                            status: 'processed',
-                            transcript_length: transcript.length,
-                            guests: uniqueGuests
+                            status: 'processed'
                           });
                         }
                       } catch (episodeError) {
                         console.error(`Error processing podcast episode ${title}:`, episodeError);
-                        const errorMessage = episodeError instanceof Error ? episodeError.message : String(episodeError);
                         errors.push({
                           source: source.influencer_name,
                           platform: 'podcast',
                           title: title,
-                          error: errorMessage
+                          error: episodeError instanceof Error ? episodeError.message : String(episodeError)
                         });
                       }
                     } else {
@@ -453,7 +479,7 @@ serve(async (req) => {
                 throw new Error(`Failed to fetch RSS feed: ${feedResponse.status}`);
               }
             } catch (feedError) {
-              console.error(`Error processing podcast RSS feed for ${source.influencer_name}:`, feedError);
+              console.error(`Error processing podcast RSS feed:`, feedError);
               errors.push({
                 source: source.influencer_name,
                 platform: 'podcast',
@@ -472,19 +498,18 @@ serve(async (req) => {
             errors.push({
               source: source.influencer_name,
               platform: 'newsletter',
-              error: 'Newsletter/Substack selected but no RSS feed URL found in platform_identifiers'
+              error: 'Newsletter/Substack selected but no RSS feed URL found'
             });
           } else {
-            console.log(`Fetching newsletter content for ${source.influencer_name} (Feed: ${feedUrl})`);
+            console.log(`Fetching newsletter content for ${source.influencer_name}`);
             
             try {
               const feedResponse = await fetch(feedUrl);
               if (feedResponse.ok) {
                 const feedText = await feedResponse.text();
                 
-                // Simple RSS parsing
                 const itemMatches = feedText.match(/<item[^>]*>(.*?)<\/item>/gs) || [];
-                console.log(`Found ${itemMatches.length} newsletter items in feed`);
+                console.log(`Found ${itemMatches.length} newsletter items`);
                 
                 for (const itemMatch of itemMatches.slice(0, 3)) {
                   const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
@@ -496,28 +521,32 @@ serve(async (req) => {
                     const link = linkMatch[1]?.trim();
                     const description = descMatch ? descMatch[1]?.trim() : '';
 
-                    // Check if we already have this content
                     const { data: existing } = await supabaseClient
                       .from('content_items')
                       .select('id')
                       .eq('original_url', link)
-                      .eq('user_id', user.id)
+                      .eq('user_id', userId)
                       .single();
 
                     if (!existing) {
                       console.log(`Processing new newsletter article: ${title}`);
                       
-                      // Process through content-processor
-                      const contentResponse = await supabaseClient.functions.invoke('content-processor', {
+                      // Use service role for invoking
+                      const invokeClient = createClient(
+                        Deno.env.get('SUPABASE_URL') ?? '',
+                        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+                      );
+
+                      const contentResponse = await invokeClient.functions.invoke('content-processor', {
                         body: {
                           title: title,
                           content: description,
                           author: source.influencer_name,
                           platform: 'substack',
                           originalUrl: link,
-                          summaryLength: 'standard'
-                        },
-                        headers: { Authorization: authHeader }
+                          summaryLength: 'standard',
+                          userId: userId
+                        }
                       });
 
                       if (contentResponse.data?.processed) {
@@ -534,7 +563,7 @@ serve(async (req) => {
                           source: source.influencer_name,
                           platform: 'newsletter',
                           title: title,
-                          error: contentResponse.error || 'Failed to process newsletter'
+                          error: contentResponse.error || 'Failed to process'
                         });
                       }
                     } else {
@@ -546,7 +575,7 @@ serve(async (req) => {
                 throw new Error(`Failed to fetch RSS feed: ${feedResponse.status}`);
               }
             } catch (feedError) {
-              console.error(`Error processing RSS feed for ${source.influencer_name}:`, feedError);
+              console.error(`Error processing RSS feed:`, feedError);
               errors.push({
                 source: source.influencer_name,
                 platform: 'newsletter',
@@ -566,11 +595,10 @@ serve(async (req) => {
     }
 
     console.log(`\n========================================`);
-    console.log(`Content aggregation completed. Processed ${processedCount} new items.`);
-    console.log(`Errors encountered: ${errors.length}`);
-    if (errors.length > 0) {
-      console.log('Errors:', JSON.stringify(errors, null, 2));
-    }
+    console.log(`Content aggregation completed`);
+    console.log(`Processed ${processedCount} new items`);
+    console.log(`Errors: ${errors.length}`);
+    console.log(`========================================\n`);
 
     return new Response(
       JSON.stringify({
