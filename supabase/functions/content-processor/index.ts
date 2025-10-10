@@ -13,34 +13,52 @@ serve(async (req) => {
   }
 
   try {
-    const { content, title, author, platform, originalUrl, summaryLength = 'standard' } = await req.json();
+    const { content, title, author, platform, originalUrl, summaryLength = 'standard', userId } = await req.json();
     
     if (!content || !title) {
       throw new Error('Content and title are required');
     }
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header provided');
-    }
+    let actualUserId: string;
+    let supabaseClient: any;
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
+    // AUTOMATED MODE: userId provided in body (called by content-aggregator)
+    if (userId) {
+      console.log('📅 AUTOMATED MODE: Processing for user:', userId);
+      
+      // Use service role client
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      
+      actualUserId = userId;
+      
+    } else {
+      // MANUAL MODE: Get user from auth header
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('No authorization header or userId provided');
       }
-    );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    if (userError || !user) {
-      throw new Error('User not authenticated');
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: authHeader },
+          },
+        }
+      );
+
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+      
+      actualUserId = user.id;
+      console.log('🔧 MANUAL MODE: Processing for user:', actualUserId);
     }
 
     // Determine summary length instructions
@@ -58,6 +76,8 @@ serve(async (req) => {
         break;
     }
 
+    console.log(`Processing content: "${title}" by ${author}`);
+
     // Generate summary using OpenAI
     const summaryPrompt = `
     ${lengthInstruction}
@@ -72,7 +92,7 @@ serve(async (req) => {
     Title: ${title}
     Author: ${author}
     Platform: ${platform}
-    Content: ${content}
+    Content: ${content.substring(0, 8000)}
     `;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -105,6 +125,8 @@ serve(async (req) => {
 
     const data = await response.json();
     const summary = data.choices[0].message.content;
+
+    console.log(`✓ Generated summary (${summary.length} chars)`);
 
     // Extract tags and sentiment from the summary
     const tagPrompt = `Based on this content summary, extract relevant tags (max 6) and determine sentiment:
@@ -148,6 +170,7 @@ serve(async (req) => {
         const extracted = JSON.parse(tagData.choices[0].message.content);
         tags = extracted.tags || [];
         sentiment = extracted.sentiment || 'neutral';
+        console.log(`✓ Extracted tags: ${tags.join(', ')} | Sentiment: ${sentiment}`);
       } catch (e) {
         console.error('Error parsing tags:', e);
       }
@@ -157,14 +180,14 @@ serve(async (req) => {
     const { data: savedContent, error } = await supabaseClient
       .from('content_items')
       .insert({
-        user_id: user.id,
+        user_id: actualUserId,
         title,
         content_type: 'processed',
         original_url: originalUrl,
         author,
         platform,
         summary,
-        full_content: content,
+        full_content: content.substring(0, 50000), // Limit content size
         metadata: {
           tags,
           sentiment,
@@ -179,22 +202,28 @@ serve(async (req) => {
       throw new Error(`Database error: ${error.message}`);
     }
 
+    console.log(`✅ Saved to database with ID: ${savedContent.id}`);
+
     return new Response(
       JSON.stringify({
         id: savedContent.id,
         summary,
         tags,
         sentiment,
-        processed: true
+        processed: true,
+        data: savedContent
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in content-processor function:', error);
+    console.error('❌ Error in content-processor function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        processed: false 
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
