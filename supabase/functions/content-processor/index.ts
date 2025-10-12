@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { content, title, author, platform, originalUrl, summaryLength = 'standard', userId } = await req.json();
+    const { content, title, author, platform, originalUrl, summaryLength = 'standard', userId, publishedDate } = await req.json();
     
     if (!content || !title) {
       throw new Error('Content and title are required');
@@ -188,6 +188,7 @@ serve(async (req) => {
         platform,
         summary,
         full_content: content.substring(0, 50000), // Limit content size
+        published_at: publishedDate,
         metadata: {
           tags,
           sentiment,
