@@ -76,6 +76,7 @@ const Dashboard = () => {
         .from('content_items')
         .select('*, folders(name, color)')
         .eq('user_id', user.id)
+        .order('published_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;

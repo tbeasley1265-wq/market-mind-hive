@@ -98,6 +98,7 @@ export type Database = {
           original_url: string | null
           platform: string
           processing_status: string | null
+          published_at: string | null
           source_id: string | null
           summary: string | null
           title: string
@@ -118,6 +119,7 @@ export type Database = {
           original_url?: string | null
           platform: string
           processing_status?: string | null
+          published_at?: string | null
           source_id?: string | null
           summary?: string | null
           title: string
@@ -138,6 +140,7 @@ export type Database = {
           original_url?: string | null
           platform?: string
           processing_status?: string | null
+          published_at?: string | null
           source_id?: string | null
           summary?: string | null
           title?: string
@@ -230,34 +233,105 @@ export type Database = {
       }
       influencer_sources: {
         Row: {
+          ai_confidence: string | null
           created_at: string
           id: string
           influencer_id: string
           influencer_name: string
+          needs_manual_review: boolean | null
           platform_identifiers: Json | null
           selected_platforms: string[]
           updated_at: string
+          urls_verified_at: string | null
           user_id: string
         }
         Insert: {
+          ai_confidence?: string | null
           created_at?: string
           id?: string
           influencer_id: string
           influencer_name: string
+          needs_manual_review?: boolean | null
           platform_identifiers?: Json | null
           selected_platforms?: string[]
           updated_at?: string
+          urls_verified_at?: string | null
           user_id: string
         }
         Update: {
+          ai_confidence?: string | null
           created_at?: string
           id?: string
           influencer_id?: string
           influencer_name?: string
+          needs_manual_review?: boolean | null
           platform_identifiers?: Json | null
           selected_platforms?: string[]
           updated_at?: string
+          urls_verified_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      item_tags: {
+        Row: {
+          item_id: string
+          tag: string
+        }
+        Insert: {
+          item_id: string
+          tag: string
+        }
+        Update: {
+          item_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_tags_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          author: string | null
+          created_at: string | null
+          external_id: string
+          id: string
+          meta: Json | null
+          published_at: string | null
+          raw_content: string | null
+          source_key: string
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string | null
+          external_id: string
+          id?: string
+          meta?: Json | null
+          published_at?: string | null
+          raw_content?: string | null
+          source_key: string
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          author?: string | null
+          created_at?: string | null
+          external_id?: string
+          id?: string
+          meta?: Json | null
+          published_at?: string | null
+          raw_content?: string | null
+          source_key?: string
+          title?: string | null
+          url?: string | null
         }
         Relationships: []
       }

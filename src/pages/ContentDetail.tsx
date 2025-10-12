@@ -147,6 +147,7 @@ const ContentDetail = () => {
             },
             source_id: null,
             updated_at: mockItem.created_at,
+            published_at: mockItem.created_at,
             folder_id: null,
             audio_url: null,
             processing_status: 'completed',
