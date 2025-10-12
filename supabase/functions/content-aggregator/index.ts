@@ -404,7 +404,8 @@ serve(async (req) => {
                             platform: detectedPlatform === 'unknown' ? 'podcast' : detectedPlatform,
                             originalUrl: episodeUrl,
                             summaryLength: 'standard',
-                            userId: userId
+                            userId: userId,
+                            publishedDate: publishedDate
                           }
                         });
 
@@ -520,11 +521,24 @@ serve(async (req) => {
                   const titleMatch = itemMatch.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/s);
                   const linkMatch = itemMatch.match(/<link[^>]*>(.*?)<\/link>/s);
                   const descMatch = itemMatch.match(/<description[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/s);
+                  const pubDateMatch = itemMatch.match(/<pubDate[^>]*>(.*?)<\/pubDate>/s);
 
                   if (titleMatch && linkMatch) {
                     const title = titleMatch[1]?.trim() || 'Untitled';
                     const link = linkMatch[1]?.trim();
                     const description = descMatch ? descMatch[1]?.trim() : '';
+
+                    // Parse publication date
+                    let publishedDate = null;
+                    if (pubDateMatch) {
+                      const pubDateStr = pubDateMatch[1]?.trim();
+                      try {
+                        publishedDate = new Date(pubDateStr).toISOString();
+                        console.log(`📅 Parsed publication date: ${pubDateStr} -> ${publishedDate}`);
+                      } catch (e) {
+                        console.warn(`Could not parse date: ${pubDateStr}`);
+                      }
+                    }
 
                     const { data: existing } = await supabaseClient
                       .from('content_items')
@@ -549,7 +563,8 @@ serve(async (req) => {
                           platform: 'substack',
                           originalUrl: link,
                           summaryLength: 'standard',
-                          userId: userId
+                          userId: userId,
+                          publishedDate: publishedDate
                         }
                       });
 
@@ -560,7 +575,8 @@ serve(async (req) => {
                           title: title,
                           author: source.influencer_name,
                           url: link,
-                          status: 'processed'
+                          status: 'processed',
+                          published_date: publishedDate
                         });
                       } else {
                         errors.push({
