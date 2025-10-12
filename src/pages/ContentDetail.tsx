@@ -288,13 +288,26 @@ const ContentDetail = () => {
 
       {/* Main Content Area */}
       <div className="max-w-4xl mx-auto px-8 py-8">
-        {/* Full Content */}
+        {/* AI-Generated Summary */}
         <div className="mb-8">
           <div className="prose prose-neutral dark:prose-invert max-w-none">
-            <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed">
-              {content.full_content}
+            <div className="whitespace-pre-wrap text-foreground/90 leading-relaxed text-base">
+              {content.summary || content.full_content}
             </div>
           </div>
+          
+          {content.original_url && (
+            <div className="mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(content.original_url, '_blank')}
+                className="flex items-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Read Original Article
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* AI Chat Messages */}
