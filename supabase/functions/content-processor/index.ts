@@ -188,7 +188,7 @@ serve(async (req) => {
         platform,
         summary,
         full_content: content.substring(0, 50000), // Limit content size
-        published_at: publishedDate,
+        published_at: publishedDate ? new Date(publishedDate).toISOString() : new Date().toISOString(),
         metadata: {
           tags,
           sentiment,
