@@ -51,9 +51,12 @@ serve(async (req) => {
 
     console.log('Found access token, searching Gmail...');
 
-    // Search for financial emails
+    // Calculate 24 hours ago timestamp
+    const oneDayAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
+
+    // Search for financial emails from the last 24 hours
     const searchQuery = encodeURIComponent(
-      'subject:(invoice OR payment OR statement OR receipt OR bill) OR from:(bank OR paypal OR stripe OR square)'
+      `subject:(invoice OR payment OR statement OR receipt OR bill) OR from:(bank OR paypal OR stripe OR square) after:${oneDayAgo}`
     );
 
     const searchResponse = await fetch(
