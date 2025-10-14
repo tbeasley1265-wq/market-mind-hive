@@ -18,13 +18,16 @@ import {
   Trash2,
   CheckCircle2,
   RefreshCw,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
 import { useInfluencerSources } from "@/hooks/useInfluencerSources";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const Sources = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInfluencer, setEditingInfluencer] = useState<string | null>(null);
   const [testingAggregator, setTestingAggregator] = useState(false);
@@ -497,7 +500,17 @@ const Sources = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Content Sources</h1>
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/dashboard')}
+              className="hover:bg-accent"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">Content Sources</h1>
+          </div>
           <p className="text-muted-foreground">
             Select financial influencers and experts, then choose which platforms to monitor. AI will automatically find their URLs.
           </p>
