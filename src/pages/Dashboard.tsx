@@ -14,7 +14,8 @@ import {
   Grid3X3,
   List,
   MoreVertical,
-  Move
+  Move,
+  Mail
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
@@ -44,6 +45,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  // Gmail sync state
+  const [isSyncingGmail, setIsSyncingGmail] = useState(false);
+  const [emailItems, setEmailItems] = useState<any[]>([]);
+  const [emailCategoryFilter, setEmailCategoryFilter] = useState('all');
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
@@ -97,11 +103,31 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // Fetch email items from database
+  const fetchEmailItems = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('email_items' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('received_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setEmailItems(data || []);
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+    }
+  }, [user]);
+
   // Fetch content items from database and subscribe for updates
   useEffect(() => {
     if (!user) return;
 
     fetchContentItems();
+    fetchEmailItems();
 
     const channel = supabase
       .channel(`content-items-dashboard-${user.id}`)
@@ -127,7 +153,7 @@ const Dashboard = () => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
     };
-  }, [user, fetchContentItems]);
+  }, [user, fetchContentItems, fetchEmailItems]);
 
   const handleContentClick = (contentId: string) => {
     navigate(`/content/${contentId}`);
@@ -163,6 +189,37 @@ const Dashboard = () => {
   const handleMoveToFolder = async (contentId: string, folderId: string | null) => {
     await moveContentToFolder(contentId, folderId);
     await fetchContentItems();
+  };
+
+  // Sync Gmail emails
+  const handleSyncGmail = async () => {
+    if (!user) return;
+    
+    setIsSyncingGmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-gmail-emails', {
+        body: { userId: user.id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Synced ${data.count} financial emails from Gmail`,
+      });
+
+      // Refresh email list
+      await fetchEmailItems();
+    } catch (error: any) {
+      console.error('Error syncing Gmail:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sync Gmail. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncingGmail(false);
+    }
   };
 
 
@@ -434,6 +491,97 @@ const Dashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Gmail Sync Section */}
+          <div className="space-y-6 border-t pt-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Financial Emails</h2>
+                <p className="text-muted-foreground">Gmail integration for invoices, payments, and statements</p>
+              </div>
+              <Button 
+                onClick={handleSyncGmail}
+                disabled={isSyncingGmail}
+                className="gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                {isSyncingGmail ? 'Syncing...' : '📧 Sync Financial Emails'}
+              </Button>
+            </div>
+
+            {/* Email Category Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {['all', 'invoice', 'payment', 'statement', 'receipt', 'bill', 'other'].map((category) => (
+                <Button
+                  key={category}
+                  variant={emailCategoryFilter === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEmailCategoryFilter(category)}
+                  className="whitespace-nowrap capitalize"
+                >
+                  {category === 'all' ? 'All' : category}
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {category === 'all' 
+                      ? emailItems.length 
+                      : emailItems.filter(e => e.category === category).length
+                    }
+                  </Badge>
+                </Button>
+              ))}
+            </div>
+
+            {/* Email List */}
+            <div className="space-y-4">
+              {emailItems.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <div className="text-muted-foreground">
+                    <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">No financial emails yet</p>
+                    <p>Click "Sync Financial Emails" to fetch your financial emails from Gmail</p>
+                  </div>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {emailItems
+                    .filter(email => emailCategoryFilter === 'all' || email.category === emailCategoryFilter)
+                    .map((email) => (
+                      <Card key={email.id} className="hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-foreground truncate">{email.subject}</h3>
+                                <Badge 
+                                  variant="secondary" 
+                                  className="capitalize shrink-0"
+                                >
+                                  {email.category}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-1">From: {email.from_address}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(email.received_at).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                              {email.snippet && (
+                                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                                  {email.snippet}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </main>
       </div>
