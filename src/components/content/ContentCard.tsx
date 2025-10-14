@@ -24,7 +24,7 @@ interface ContentCardProps {
   id?: string;
   title: string;
   source: string;
-  platform: "youtube" | "substack" | "twitter" | "email" | "reddit";
+  platform: "youtube" | "substack" | "twitter" | "email" | "reddit" | "gmail";
   author: string;
   timestamp: string;
   summary: string;
@@ -34,6 +34,7 @@ interface ContentCardProps {
   folders?: Folder[];
   onMoveToFolder?: (contentId: string, folderId: string | null) => void;
   folderName?: string;
+  emailCategory?: string;
 }
 
 const platformIcons = {
@@ -42,6 +43,7 @@ const platformIcons = {
   twitter: MessageCircle,
   email: Mail,
   reddit: FileText,
+  gmail: Mail,
 };
 
 const platformColors = {
@@ -50,6 +52,7 @@ const platformColors = {
   twitter: "bg-blue-500",
   email: "bg-green-500",
   reddit: "bg-orange-600",
+  gmail: "bg-blue-600",
 };
 
 const ContentCard = ({
@@ -65,7 +68,8 @@ const ContentCard = ({
   onClick,
   folders = [],
   onMoveToFolder,
-  folderName
+  folderName,
+  emailCategory
 }: ContentCardProps) => {
   // Ensure platform is valid
   const validPlatform = platform || 'substack';
@@ -189,7 +193,7 @@ const ContentCard = ({
         </div>
         
         <CardTitle className="text-lg leading-tight group-hover:text-accent transition-colors duration-200">
-          {title}
+          {platform === 'gmail' && '📧 '}{title}
         </CardTitle>
       </CardHeader>
 
@@ -198,8 +202,13 @@ const ContentCard = ({
           {summary}
         </CardDescription>
         
-        {tags.length > 0 && (
+        {(tags.length > 0 || emailCategory) && (
           <div className="flex flex-wrap gap-2">
+            {emailCategory && (
+              <Badge variant="default" className="text-xs capitalize">
+                {emailCategory}
+              </Badge>
+            )}
             {tags.slice(0, 4).map((tag, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {tag}

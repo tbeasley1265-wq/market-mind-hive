@@ -15,7 +15,8 @@ import {
   List,
   MoreVertical,
   Move,
-  Mail
+  Mail,
+  Search
 } from "lucide-react";
 import ContentCard from "@/components/content/ContentCard";
 import DocumentUpload from "@/components/content/DocumentUpload";
@@ -45,11 +46,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  
-  // Gmail sync state
   const [isSyncingGmail, setIsSyncingGmail] = useState(false);
-  const [emailItems, setEmailItems] = useState<any[]>([]);
-  const [emailCategoryFilter, setEmailCategoryFilter] = useState('all');
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
@@ -78,17 +75,56 @@ const Dashboard = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      // Fetch content items
+      const { data: contentData, error: contentError } = await supabase
         .from('content_items')
         .select('*, folders(name, color)')
         .eq('user_id', user.id)
         .order('published_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (contentError) throw contentError;
+
+      // Fetch email items
+      const { data: emailData, error: emailError } = await supabase
+        .from('email_items' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('received_at', { ascending: false })
+        .limit(50);
+
+      if (emailError) throw emailError;
+
+      // Transform email items to match content item structure
+      const transformedEmails = (emailData || []).map((email: any) => ({
+        id: email.id,
+        user_id: email.user_id,
+        title: email.subject,
+        content_type: 'email',
+        platform: 'gmail',
+        author: email.from_address,
+        summary: email.snippet || email.full_content?.substring(0, 200),
+        metadata: {
+          category: email.category,
+          emailId: email.email_id
+        },
+        original_url: null,
+        is_bookmarked: false,
+        created_at: email.received_at,
+        published_at: email.received_at,
+        folder_id: null,
+        folders: null
+      }));
+
+      // Combine and sort by date
+      const combinedContent = [...(contentData || []), ...transformedEmails].sort((a, b) => {
+        const dateA = new Date(a.published_at || a.created_at).getTime();
+        const dateB = new Date(b.published_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
 
       if (isMountedRef.current) {
-        setContentItems(data || []);
+        setContentItems(combinedContent);
         setLastSyncTime(new Date());
       }
     } catch (error) {
@@ -103,31 +139,11 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // Fetch email items from database
-  const fetchEmailItems = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('email_items' as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('received_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setEmailItems(data || []);
-    } catch (error) {
-      console.error('Error fetching emails:', error);
-    }
-  }, [user]);
-
   // Fetch content items from database and subscribe for updates
   useEffect(() => {
     if (!user) return;
 
     fetchContentItems();
-    fetchEmailItems();
 
     const channel = supabase
       .channel(`content-items-dashboard-${user.id}`)
@@ -153,7 +169,7 @@ const Dashboard = () => {
       supabase.removeChannel(channel);
       window.clearInterval(interval);
     };
-  }, [user, fetchContentItems, fetchEmailItems]);
+  }, [user, fetchContentItems]);
 
   const handleContentClick = (contentId: string) => {
     navigate(`/content/${contentId}`);
@@ -191,6 +207,16 @@ const Dashboard = () => {
     await fetchContentItems();
   };
 
+  // Google icon component
+  const GoogleIcon = () => (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  );
+
   // Sync Gmail emails
   const handleSyncGmail = async () => {
     if (!user) return;
@@ -204,17 +230,17 @@ const Dashboard = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: `Synced ${data.count} financial emails from Gmail`,
+        title: "Gmail Search Complete",
+        description: `Found ${data.count} financial emails`,
       });
 
-      // Refresh email list
-      await fetchEmailItems();
+      // Refresh content list
+      await fetchContentItems();
     } catch (error: any) {
       console.error('Error syncing Gmail:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to sync Gmail. Please try again.",
+        description: error.message || "Failed to search Gmail. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -268,7 +294,7 @@ const Dashboard = () => {
     id: item.id,
     title: item.title,
     source: item.platform,
-    platform: item.content_type as 'youtube' | 'substack' | 'email' | 'twitter' | 'reddit',
+    platform: item.content_type as 'youtube' | 'substack' | 'email' | 'twitter' | 'reddit' | 'gmail',
     author: item.author || 'Unknown',
     timestamp: new Date(item.created_at).toLocaleString(),
     summary: item.summary || '',
@@ -277,7 +303,8 @@ const Dashboard = () => {
     isBookmarked: item.is_bookmarked,
     folderId: item.folder_id,
     folderName: item.folders?.name,
-    folderColor: item.folders?.color
+    folderColor: item.folders?.color,
+    emailCategory: item.metadata?.category // For Gmail emails
   }));
 
   // Filter by folder first, then by content type
@@ -287,6 +314,10 @@ const Dashboard = () => {
 
   const filteredContent = folderFilteredContent.filter(content => {
     if (activeFilter === "all") return true;
+    
+    if (activeFilter === "gmail") {
+      return content.platform === 'gmail';
+    }
     
     const filterMap: Record<string, string[]> = {
       crypto: ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"],
@@ -314,6 +345,7 @@ const Dashboard = () => {
 
   const filters = [
     { key: "all", label: "All Content", count: folderFilteredContent.length },
+    { key: "gmail", label: "Gmail", count: folderFilteredContent.filter(c => c.platform === 'gmail').length },
     { key: "crypto", label: "Crypto", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["Bitcoin", "Crypto", "DeFi", "Solana", "ETF"].includes(t))).length },
     { key: "macro", label: "Macro", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["Fed", "Interest Rates", "Monetary Policy", "Inflation"].includes(t))).length },
     { key: "tech", label: "Tech", count: folderFilteredContent.filter(c => c.tags.some((t: string) => ["AI", "Tech Stocks", "Valuations", "Earnings"].includes(t))).length },
@@ -378,6 +410,15 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSyncGmail}
+                disabled={isSyncingGmail}
+              >
+                <GoogleIcon />
+                <span className="ml-2">{isSyncingGmail ? 'Searching...' : 'Gmail Search'}</span>
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -491,97 +532,6 @@ const Dashboard = () => {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Gmail Sync Section */}
-          <div className="space-y-6 border-t pt-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Financial Emails</h2>
-                <p className="text-muted-foreground">Gmail integration for invoices, payments, and statements</p>
-              </div>
-              <Button 
-                onClick={handleSyncGmail}
-                disabled={isSyncingGmail}
-                className="gap-2"
-              >
-                <Mail className="h-4 w-4" />
-                {isSyncingGmail ? 'Syncing...' : '📧 Sync Financial Emails'}
-              </Button>
-            </div>
-
-            {/* Email Category Filters */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              {['all', 'invoice', 'payment', 'statement', 'receipt', 'bill', 'other'].map((category) => (
-                <Button
-                  key={category}
-                  variant={emailCategoryFilter === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setEmailCategoryFilter(category)}
-                  className="whitespace-nowrap capitalize"
-                >
-                  {category === 'all' ? 'All' : category}
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {category === 'all' 
-                      ? emailItems.length 
-                      : emailItems.filter(e => e.category === category).length
-                    }
-                  </Badge>
-                </Button>
-              ))}
-            </div>
-
-            {/* Email List */}
-            <div className="space-y-4">
-              {emailItems.length === 0 ? (
-                <Card className="p-12 text-center">
-                  <div className="text-muted-foreground">
-                    <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">No financial emails yet</p>
-                    <p>Click "Sync Financial Emails" to fetch your financial emails from Gmail</p>
-                  </div>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {emailItems
-                    .filter(email => emailCategoryFilter === 'all' || email.category === emailCategoryFilter)
-                    .map((email) => (
-                      <Card key={email.id} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-foreground truncate">{email.subject}</h3>
-                                <Badge 
-                                  variant="secondary" 
-                                  className="capitalize shrink-0"
-                                >
-                                  {email.category}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-1">From: {email.from_address}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(email.received_at).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                              {email.snippet && (
-                                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                  {email.snippet}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-              )}
-            </div>
           </div>
         </main>
       </div>
