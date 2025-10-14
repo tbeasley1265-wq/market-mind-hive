@@ -14,17 +14,38 @@ function extractVideoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Function to get YouTube video metadata (title, channel)
-async function getYouTubeMetadata(videoId: string): Promise<{ title: string; author: string }> {
+// Function to get YouTube video metadata using YouTube Data API
+async function getYouTubeMetadata(videoId: string): Promise<{ title: string; author: string; publishedAt: string }> {
   try {
+    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
+    
+    if (YOUTUBE_API_KEY) {
+      // Use official YouTube API if key is available
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${YOUTUBE_API_KEY}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const video = data.items?.[0];
+        
+        if (video) {
+          return {
+            title: video.snippet.title,
+            author: video.snippet.channelTitle,
+            publishedAt: new Date(video.snippet.publishedAt).toISOString()
+          };
+        }
+      }
+    }
+    
+    // Fallback to scraping if API key not available or fails
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
     const html = await response.text();
     
-    // Extract title
     const titleMatch = html.match(/<meta name="title" content="([^"]+)"/);
     const title = titleMatch ? titleMatch[1] : 'Unknown Title';
     
-    // Extract channel name from various possible locations
     let author = 'Unknown Creator';
     const channelMatch = html.match(/"author":"([^"]+)"/);
     if (channelMatch) {
@@ -34,21 +55,27 @@ async function getYouTubeMetadata(videoId: string): Promise<{ title: string; aut
       if (ownerMatch) author = ownerMatch[1];
     }
     
-    return { title, author };
+    // Try to extract publish date from HTML
+    const dateMatch = html.match(/"datePublished":"([^"]+)"/);
+    const publishedAt = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString();
+    
+    return { title, author, publishedAt };
   } catch (error) {
     console.error('Error fetching YouTube metadata:', error);
-    return { title: 'Unknown Title', author: 'Unknown Creator' };
+    return { 
+      title: 'Unknown Title', 
+      author: 'Unknown Creator',
+      publishedAt: new Date().toISOString()
+    };
   }
 }
 
 // Function to get YouTube transcript from captions
 async function getYouTubeTranscript(videoId: string): Promise<string> {
   try {
-    // Fetch video page
     const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
     const videoPageHtml = await videoPageResponse.text();
     
-    // Find caption tracks in page source
     const captionTracksMatch = videoPageHtml.match(/"captionTracks":(\[.*?\])/);
     
     if (!captionTracksMatch) {
@@ -57,7 +84,6 @@ async function getYouTubeTranscript(videoId: string): Promise<string> {
     
     const captionTracks = JSON.parse(captionTracksMatch[1]);
     
-    // Get English captions or first available
     const track = captionTracks.find((t: any) => 
       t.languageCode === 'en' || t.languageCode === 'en-US'
     ) || captionTracks[0];
@@ -68,11 +94,9 @@ async function getYouTubeTranscript(videoId: string): Promise<string> {
     
     console.log(`Found captions in language: ${track.languageCode}`);
     
-    // Fetch caption XML
     const captionResponse = await fetch(track.baseUrl);
     const captionXml = await captionResponse.text();
     
-    // Parse XML to extract text
     const textMatches = captionXml.match(/<text[^>]*>(.*?)<\/text>/g) || [];
     const transcript = textMatches
       .map(match => {
@@ -104,39 +128,54 @@ serve(async (req) => {
   }
 
   try {
-    const { videoUrl, summaryLength = 'standard' } = await req.json();
+    const { videoUrl, summaryLength = 'standard', userId } = await req.json();
     
     if (!videoUrl) {
       throw new Error('Video URL is required');
     }
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header provided');
-    }
+    // Create service role client if userId is provided (for cron jobs)
+    let supabaseClient;
+    let actualUserId;
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          },
-        },
+    if (userId) {
+      // Service role client for cron jobs
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      actualUserId = userId;
+    } else {
+      // Regular auth for user requests
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('No authorization header provided');
       }
-    );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    if (userError || !user) {
-      throw new Error('User not authenticated');
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: {
+              Authorization: authHeader,
+            },
+          },
+        }
+      );
+
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+      actualUserId = user.id;
     }
 
     let videoContent = '';
     let author = '';
     let title = '';
+    let publishedAt = new Date().toISOString();
     
     // Handle YouTube videos
     if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
@@ -147,15 +186,18 @@ serve(async (req) => {
       
       console.log(`Processing YouTube video: ${videoId}`);
       
-      // Get video metadata (title, author)
+      // Get video metadata (title, author, publishedAt)
       const metadata = await getYouTubeMetadata(videoId);
       title = metadata.title;
       author = metadata.author;
+      publishedAt = metadata.publishedAt;
+      
+      console.log(`Video: ${title} by ${author}, published: ${publishedAt}`);
       
       // Get video transcript
       try {
         videoContent = await getYouTubeTranscript(videoId);
-        console.log(`Successfully fetched transcript for: ${title}`);
+        console.log(`Successfully fetched transcript: ${videoContent.length} chars`);
       } catch (transcriptError) {
         console.error('Failed to fetch transcript:', transcriptError);
         throw new Error('This video does not have captions available. Please try a different video or enable captions on YouTube.');
@@ -178,7 +220,6 @@ serve(async (req) => {
         break;
     }
 
-    // Check if OpenAI API key is available
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIKey) {
       throw new Error('OpenAI API key not configured');
@@ -196,7 +237,7 @@ serve(async (req) => {
     5. Overall sentiment (bullish/bearish/neutral)
     6. Notable quotes or key statements
 
-    Video Content: ${videoContent}
+    Video Content: ${videoContent.substring(0, 12000)}
     `;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -277,18 +318,19 @@ serve(async (req) => {
       }
     }
 
-    // Save to database
+    // Save to database with published_at
     const { data: savedContent, error } = await supabaseClient
       .from('content_items')
       .insert({
-        user_id: user.id,
+        user_id: actualUserId,
         title,
         content_type: 'video',
         original_url: videoUrl,
         author,
         platform: 'youtube',
+        published_at: publishedAt,  // ← ADDED THIS!
         summary,
-        full_content: videoContent,
+        full_content: videoContent.substring(0, 50000),
         metadata: {
           tags,
           sentiment,
@@ -304,16 +346,20 @@ serve(async (req) => {
       throw new Error(`Database error: ${error.message}`);
     }
 
+    console.log(`✅ Successfully saved video: ${title}`);
+
     return new Response(
       JSON.stringify({
-        id: savedContent.id,
-        title,
-        author,
-        summary,
-        tags,
-        sentiment,
-        videoUrl,
-        processed: true
+        processed: true,
+        data: {
+          id: savedContent.id,
+          title,
+          author,
+          summary,
+          tags,
+          sentiment,
+          publishedAt
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
