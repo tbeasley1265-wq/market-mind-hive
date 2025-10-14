@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.document-summarizer]
 verify_jwt = false
+
+[functions.fetch-gmail-emails]
+verify_jwt = true
