@@ -73,52 +73,91 @@ async function getYouTubeMetadata(videoId: string): Promise<{ title: string; aut
 // Function to get YouTube transcript from captions
 async function getYouTubeTranscript(videoId: string): Promise<string> {
   try {
+    // First, try to get caption track list from YouTube's API
     const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
     const videoPageHtml = await videoPageResponse.text();
     
-    const captionTracksMatch = videoPageHtml.match(/"captionTracks":(\[.*?\])/);
+    // Look for captionTracks in the page
+    let captionUrl = null;
     
-    if (!captionTracksMatch) {
-      throw new Error('No captions available for this video');
+    // Try multiple patterns to find caption tracks
+    const patterns = [
+      /"captionTracks":(\[.*?\])/,
+      /"captions":.*?"playerCaptionsTracklistRenderer".*?"captionTracks":(\[.*?\])/s
+    ];
+    
+    let captionTracks = null;
+    for (const pattern of patterns) {
+      const match = videoPageHtml.match(pattern);
+      if (match) {
+        try {
+          captionTracks = JSON.parse(match[1]);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
     }
     
-    const captionTracks = JSON.parse(captionTracksMatch[1]);
-    
-    const track = captionTracks.find((t: any) => 
-      t.languageCode === 'en' || t.languageCode === 'en-US'
-    ) || captionTracks[0];
-    
-    if (!track) {
-      throw new Error('No caption tracks found');
+    if (!captionTracks || captionTracks.length === 0) {
+      // Try alternative: use YouTube's timedtext API directly with video ID
+      // This often works even when captionTracks aren't in the HTML
+      captionUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=srv3`;
+      console.log('Trying direct timedtext API');
+    } else {
+      // Find English captions (auto-generated or manual)
+      const track = captionTracks.find((t: any) => 
+        t.languageCode === 'en' || 
+        t.languageCode === 'en-US' ||
+        t.languageCode === 'en-GB'
+      ) || captionTracks.find((t: any) => t.kind === 'asr') || captionTracks[0];
+      
+      captionUrl = track.baseUrl;
+      console.log(`Found captions: ${track.languageCode} (${track.kind || 'manual'})`);
     }
     
-    console.log(`Found captions in language: ${track.languageCode}`);
+    // Fetch the caption XML
+    const captionResponse = await fetch(captionUrl);
+    if (!captionResponse.ok) {
+      throw new Error(`Failed to fetch captions: ${captionResponse.status}`);
+    }
     
-    const captionResponse = await fetch(track.baseUrl);
     const captionXml = await captionResponse.text();
     
-    const textMatches = captionXml.match(/<text[^>]*>(.*?)<\/text>/g) || [];
+    // Parse XML - handle both srv3 and ttml formats
+    const textMatches = captionXml.match(/<text[^>]*>(.*?)<\/text>/g) || 
+                       captionXml.match(/<p[^>]*>(.*?)<\/p>/g) || [];
+    
+    if (textMatches.length === 0) {
+      throw new Error('No text found in caption file');
+    }
+    
     const transcript = textMatches
       .map(match => {
-        const text = match.replace(/<text[^>]*>|<\/text>/g, '');
+        // Remove XML tags
+        let text = match.replace(/<[^>]*>/g, '');
+        // Decode HTML entities
         return text
           .replace(/&amp;/g, '&')
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>')
           .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
+          .replace(/&#39;/g, "'")
+          .replace(/&apos;/g, "'");
       })
+      .filter(text => text.trim().length > 0)
       .join(' ');
     
     if (!transcript || transcript.trim().length === 0) {
-      throw new Error('Transcript is empty');
+      throw new Error('Transcript is empty after parsing');
     }
     
-    console.log(`Transcript length: ${transcript.length} characters`);
+    console.log(`✅ Transcript extracted: ${transcript.length} characters`);
     return transcript;
+    
   } catch (error) {
     console.error('Transcript fetch failed:', error);
-    throw error;
+    throw new Error(`Could not fetch transcript: ${error.message}`);
   }
 }
 
