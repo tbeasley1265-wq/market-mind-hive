@@ -145,6 +145,43 @@ const Dashboard = () => {
 
     fetchContentItems();
 
+    // Check if we're returning from Gmail OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('gmail_sync') === 'true') {
+      // Remove the query param
+      window.history.replaceState({}, '', '/dashboard');
+      
+      // Auto-trigger Gmail sync after OAuth approval
+      setTimeout(async () => {
+        console.log('Auto-syncing Gmail after OAuth approval...');
+        setIsSyncingGmail(true);
+        try {
+          const { data, error } = await supabase.functions.invoke('fetch-gmail-emails', {
+            body: { userId: user.id }
+          });
+
+          if (error) throw error;
+
+          if (data?.success) {
+            toast({
+              title: "Gmail Sync Complete",
+              description: `Successfully synced ${data.count} emails`,
+            });
+            await fetchContentItems();
+          }
+        } catch (error: any) {
+          console.error('Gmail sync error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to sync Gmail",
+            variant: "destructive"
+          });
+        } finally {
+          setIsSyncingGmail(false);
+        }
+      }, 1000);
+    }
+
     const channel = supabase
       .channel(`content-items-dashboard-${user.id}`)
       .on(
@@ -219,23 +256,61 @@ const Dashboard = () => {
 
   // Sync Gmail emails
   const handleSyncGmail = async () => {
-    if (!user) return;
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Please log in to sync Gmail",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSyncingGmail(true);
     try {
+      // First, try to fetch emails
       const { data, error } = await supabase.functions.invoke('fetch-gmail-emails', {
         body: { userId: user.id }
       });
 
-      if (error) throw error;
+      // If we get a token error, trigger OAuth with Gmail scope
+      if (error || (data?.error && data.error.includes('access token'))) {
+        console.log('Gmail permissions needed, triggering OAuth...');
+        
+        // Trigger Google OAuth with Gmail scope
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            scopes: 'email profile https://www.googleapis.com/auth/gmail.readonly',
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent'
+            },
+            redirectTo: `${window.location.origin}/dashboard?gmail_sync=true`
+          }
+        });
 
-      toast({
-        title: "Gmail Search Complete",
-        description: `Found ${data.count} financial emails`,
-      });
+        if (oauthError) {
+          throw oauthError;
+        }
+        
+        // OAuth will redirect, so we don't need to do anything else here
+        toast({
+          title: "Gmail Permissions Required",
+          description: "Please approve Gmail access in the popup window",
+        });
+        setIsSyncingGmail(false);
+        return;
+      }
 
-      // Refresh content list
-      await fetchContentItems();
+      if (data?.success) {
+        toast({
+          title: "Gmail Search Complete",
+          description: `Found ${data.count} financial emails`,
+        });
+
+        // Refresh content list
+        await fetchContentItems();
+      }
     } catch (error: any) {
       console.error('Error syncing Gmail:', error);
       toast({
