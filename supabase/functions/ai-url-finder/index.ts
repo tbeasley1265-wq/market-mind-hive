@@ -23,6 +23,12 @@ serve(async (req) => {
     console.log(`🔍 Finding URLs for: ${influencerName}`);
     console.log(`📋 Platforms requested: ${selectedPlatforms?.join(', ')}`);
 
+    // For YouTube, try using the YouTube Data API first
+    let youtubeChannelId: string | null = null;
+    if (selectedPlatforms?.includes('youtube')) {
+      youtubeChannelId = await searchYouTubeChannel(influencerName);
+    }
+
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
       throw new Error('OpenAI API key not configured');
@@ -120,12 +126,18 @@ Return ONLY valid JSON in this EXACT format:
     const validatedIdentifiers: Record<string, string> = {};
     
     for (const platform of selectedPlatforms || []) {
-      const value = platformIdentifiers[platform];
-      if (value && value !== 'null' && value !== null && value.trim() !== '') {
-        validatedIdentifiers[platform] = value.trim();
-        console.log(`✓ Found ${platform}: ${value}`);
+      // Use YouTube Data API result if we got one
+      if (platform === 'youtube' && youtubeChannelId) {
+        validatedIdentifiers[platform] = youtubeChannelId;
+        console.log(`✓ Found ${platform} (via YouTube API): ${youtubeChannelId}`);
       } else {
-        console.log(`⚠ Missing ${platform}`);
+        const value = platformIdentifiers[platform];
+        if (value && value !== 'null' && value !== null && value.trim() !== '') {
+          validatedIdentifiers[platform] = value.trim();
+          console.log(`✓ Found ${platform}: ${value}`);
+        } else {
+          console.log(`⚠ Missing ${platform}`);
+        }
       }
     }
 
@@ -167,6 +179,50 @@ Return ONLY valid JSON in this EXACT format:
     );
   }
 });
+
+// Helper function to search YouTube for a channel using the Data API
+async function searchYouTubeChannel(influencerName: string): Promise<string | null> {
+  const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
+  if (!YOUTUBE_API_KEY) {
+    console.log('⚠ YouTube API key not set, will use AI fallback');
+    return null;
+  }
+
+  try {
+    console.log(`🔍 Searching YouTube for: ${influencerName}`);
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(influencerName)}&maxResults=1&key=${YOUTUBE_API_KEY}`;
+    
+    const response = await fetch(searchUrl);
+    if (!response.ok) {
+      console.warn(`⚠ YouTube search API error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.items && data.items.length > 0) {
+      const channelId = data.items[0].snippet.channelId;
+      const channelTitle = data.items[0].snippet.title;
+      
+      // Verify the channel exists
+      const verifyUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+      const verifyResponse = await fetch(verifyUrl);
+      
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        if (verifyData.items && verifyData.items.length > 0) {
+          console.log(`✓ Found and verified YouTube channel: ${channelTitle} (${channelId})`);
+          return channelId;
+        }
+      }
+    }
+    
+    console.log(`⚠ No YouTube channel found for: ${influencerName}`);
+    return null;
+  } catch (error) {
+    console.error(`❌ YouTube search error: ${error}`);
+    return null;
+  }
+}
 
 // Helper function to verify URLs are actually accessible
 async function verifyUrls(identifiers: Record<string, string>) {
