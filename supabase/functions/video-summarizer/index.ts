@@ -14,26 +14,87 @@ function extractVideoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Function to get YouTube transcript using YouTube Transcript API
-async function getYouTubeTranscript(videoId: string): Promise<string> {
+// Function to get YouTube video metadata (title, channel)
+async function getYouTubeMetadata(videoId: string): Promise<{ title: string; author: string }> {
   try {
-    // Using youtube-transcript-api (you might need to implement this differently)
-    // For now, we'll simulate getting transcript from video description or use a mock
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
     const html = await response.text();
     
-    // Extract title and description from the HTML
+    // Extract title
     const titleMatch = html.match(/<meta name="title" content="([^"]+)"/);
-    const descMatch = html.match(/<meta name="description" content="([^"]+)"/);
-    
     const title = titleMatch ? titleMatch[1] : 'Unknown Title';
-    const description = descMatch ? descMatch[1] : '';
     
-    // In a real implementation, you'd use the YouTube API or a transcript service
-    return `Title: ${title}\nDescription: ${description}`;
+    // Extract channel name from various possible locations
+    let author = 'Unknown Creator';
+    const channelMatch = html.match(/"author":"([^"]+)"/);
+    if (channelMatch) {
+      author = channelMatch[1];
+    } else {
+      const ownerMatch = html.match(/"ownerChannelName":"([^"]+)"/);
+      if (ownerMatch) author = ownerMatch[1];
+    }
+    
+    return { title, author };
   } catch (error) {
-    console.error('Error fetching YouTube data:', error);
-    throw new Error('Failed to fetch video content');
+    console.error('Error fetching YouTube metadata:', error);
+    return { title: 'Unknown Title', author: 'Unknown Creator' };
+  }
+}
+
+// Function to get YouTube transcript from captions
+async function getYouTubeTranscript(videoId: string): Promise<string> {
+  try {
+    // Fetch video page
+    const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+    const videoPageHtml = await videoPageResponse.text();
+    
+    // Find caption tracks in page source
+    const captionTracksMatch = videoPageHtml.match(/"captionTracks":(\[.*?\])/);
+    
+    if (!captionTracksMatch) {
+      throw new Error('No captions available for this video');
+    }
+    
+    const captionTracks = JSON.parse(captionTracksMatch[1]);
+    
+    // Get English captions or first available
+    const track = captionTracks.find((t: any) => 
+      t.languageCode === 'en' || t.languageCode === 'en-US'
+    ) || captionTracks[0];
+    
+    if (!track) {
+      throw new Error('No caption tracks found');
+    }
+    
+    console.log(`Found captions in language: ${track.languageCode}`);
+    
+    // Fetch caption XML
+    const captionResponse = await fetch(track.baseUrl);
+    const captionXml = await captionResponse.text();
+    
+    // Parse XML to extract text
+    const textMatches = captionXml.match(/<text[^>]*>(.*?)<\/text>/g) || [];
+    const transcript = textMatches
+      .map(match => {
+        const text = match.replace(/<text[^>]*>|<\/text>/g, '');
+        return text
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'");
+      })
+      .join(' ');
+    
+    if (!transcript || transcript.trim().length === 0) {
+      throw new Error('Transcript is empty');
+    }
+    
+    console.log(`Transcript length: ${transcript.length} characters`);
+    return transcript;
+  } catch (error) {
+    console.error('Transcript fetch failed:', error);
+    throw error;
   }
 }
 
@@ -84,15 +145,21 @@ serve(async (req) => {
         throw new Error('Invalid YouTube URL');
       }
       
-      // Get video transcript/content
-      videoContent = await getYouTubeTranscript(videoId);
+      console.log(`Processing YouTube video: ${videoId}`);
       
-      // Extract author from content (you might want to use YouTube API for better data)
-      const channelMatch = videoContent.match(/Channel: ([^\\n]+)/);
-      author = channelMatch ? channelMatch[1] : 'Unknown';
+      // Get video metadata (title, author)
+      const metadata = await getYouTubeMetadata(videoId);
+      title = metadata.title;
+      author = metadata.author;
       
-      const titleMatch = videoContent.match(/Title: ([^\\n]+)/);
-      title = titleMatch ? titleMatch[1] : 'YouTube Video';
+      // Get video transcript
+      try {
+        videoContent = await getYouTubeTranscript(videoId);
+        console.log(`Successfully fetched transcript for: ${title}`);
+      } catch (transcriptError) {
+        console.error('Failed to fetch transcript:', transcriptError);
+        throw new Error('This video does not have captions available. Please try a different video or enable captions on YouTube.');
+      }
     } else {
       throw new Error('Currently only YouTube videos are supported');
     }
