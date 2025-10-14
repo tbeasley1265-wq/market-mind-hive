@@ -156,8 +156,17 @@ const Dashboard = () => {
         console.log('Auto-syncing Gmail after OAuth approval...');
         setIsSyncingGmail(true);
         try {
+          // Get the current session token
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session?.access_token) {
+            throw new Error('No session token found');
+          }
+
           const { data, error } = await supabase.functions.invoke('fetch-gmail-emails', {
-            body: { userId: user.id }
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            }
           });
 
           if (error) throw error;
@@ -267,9 +276,18 @@ const Dashboard = () => {
     
     setIsSyncingGmail(true);
     try {
-      // First, try to fetch emails
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No session token found');
+      }
+
+      // First, try to fetch emails with the session token
       const { data, error } = await supabase.functions.invoke('fetch-gmail-emails', {
-        body: { userId: user.id }
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
       });
 
       // If we get a token error, trigger OAuth with Gmail scope

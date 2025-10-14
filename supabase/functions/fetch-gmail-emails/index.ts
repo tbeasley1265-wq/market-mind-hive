@@ -13,15 +13,43 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
-
-    if (!userId) {
-      throw new Error('userId is required');
+    // Get the session token from the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No Authorization header found');
     }
 
-    console.log('Fetching Gmail emails for user:', userId);
+    const token = authHeader.replace('Bearer ', '');
+    console.log('✓ Authorization header received');
 
-    // Initialize Supabase admin client
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    // Get the authenticated user from the session token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error('Error getting user from token:', userError);
+      throw new Error('User not authenticated');
+    }
+
+    console.log('✓ User authenticated:', user.id);
+
+    // Extract provider_token from user.app_metadata
+    const providerToken = user.app_metadata?.provider_token;
+    const providerRefreshToken = user.app_metadata?.provider_refresh_token;
+
+    if (!providerToken) {
+      console.error('❌ No provider_token found in app_metadata');
+      throw new Error('No Gmail access token found. Please sign in with Google again to grant Gmail permissions.');
+    }
+
+    console.log('✓ Found provider token, searching Gmail...');
+
+    // Initialize Supabase admin client for database operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -32,24 +60,6 @@ serve(async (req) => {
         }
       }
     );
-
-    // Get user's OAuth tokens
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    
-    if (userError || !user) {
-      console.error('Error fetching user:', userError);
-      throw new Error('User not found');
-    }
-
-    // Get Google provider token
-    const googleIdentity = user.identities?.find(identity => identity.provider === 'google');
-    const accessToken = googleIdentity?.access_token;
-
-    if (!accessToken) {
-      throw new Error('No Google access token found. User needs to re-authenticate with Gmail permissions.');
-    }
-
-    console.log('Found access token, searching Gmail...');
 
     // Calculate 24 hours ago timestamp
     const oneDayAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
@@ -63,7 +73,7 @@ serve(async (req) => {
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${searchQuery}&maxResults=50`,
       {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${providerToken}`,
           'Content-Type': 'application/json',
         },
       }
@@ -93,7 +103,7 @@ serve(async (req) => {
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${providerToken}`,
             'Content-Type': 'application/json',
           },
         }
@@ -159,7 +169,7 @@ serve(async (req) => {
 
       return {
         email_id: email.id,
-        user_id: userId,
+        user_id: user.id,
         subject,
         from_address: from,
         snippet,
