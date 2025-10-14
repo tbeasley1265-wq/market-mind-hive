@@ -100,9 +100,13 @@ const Auth = () => {
       redirectTo: `${window.location.origin}/dashboard`
     };
 
-    // Add required email scopes for Google to prevent auth failures
+    // Add Gmail read permissions for Google OAuth
     if (provider === 'google') {
-      authOptions.scopes = 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid';
+      authOptions.scopes = 'email profile https://www.googleapis.com/auth/gmail.readonly';
+      authOptions.queryParams = {
+        access_type: 'offline',
+        prompt: 'consent'
+      };
     }
     const {
       error
