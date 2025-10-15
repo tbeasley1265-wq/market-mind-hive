@@ -215,10 +215,11 @@ serve(async (req) => {
     let author = '';
     let title = '';
     let publishedAt = new Date().toISOString();
+    let videoId: string | null = null;
     
     // Handle YouTube videos
     if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-      const videoId = extractVideoId(videoUrl);
+      videoId = extractVideoId(videoUrl);
       if (!videoId) {
         throw new Error('Invalid YouTube URL');
       }
@@ -357,32 +358,74 @@ serve(async (req) => {
       }
     }
 
-    // Save to database with published_at
-    const { data: savedContent, error } = await supabaseClient
-      .from('content_items')
-      .insert({
-        user_id: actualUserId,
-        title,
-        content_type: 'video',
-        original_url: videoUrl,
-        author,
-        platform: 'youtube',
-        published_at: publishedAt,  // ← ADDED THIS!
-        summary,
-        full_content: videoContent.substring(0, 50000),
-        metadata: {
-          tags,
-          sentiment,
-          processed_at: new Date().toISOString(),
-          summary_length: summaryLength,
-          video_id: extractVideoId(videoUrl)
-        }
-      })
-      .select()
-      .single();
+    const metadataPayload = {
+      tags,
+      sentiment,
+      processed_at: new Date().toISOString(),
+      summary_length: summaryLength,
+      video_id: videoId
+    };
 
-    if (error) {
-      throw new Error(`Database error: ${error.message}`);
+    const { data: existingRows, error: existingLookupError } = await supabaseClient
+      .from('content_items')
+      .select('id')
+      .eq('user_id', actualUserId)
+      .eq('original_url', videoUrl)
+      .limit(1);
+
+    if (existingLookupError) {
+      throw new Error(`Database lookup error: ${existingLookupError.message}`);
+    }
+
+    let savedContent;
+
+    if (existingRows && existingRows.length > 0) {
+      const existingItem = existingRows[0];
+      const { data: updatedContent, error: updateError } = await supabaseClient
+        .from('content_items')
+        .update({
+          title,
+          author,
+          platform: 'youtube',
+          content_type: 'video',
+          original_url: videoUrl,
+          published_at: publishedAt,
+          summary,
+          full_content: videoContent.substring(0, 50000),
+          metadata: metadataPayload
+        })
+        .eq('id', existingItem.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(`Database update error: ${updateError.message}`);
+      }
+
+      savedContent = updatedContent;
+    } else {
+      const { data: insertedContent, error: insertError } = await supabaseClient
+        .from('content_items')
+        .insert({
+          user_id: actualUserId,
+          title,
+          content_type: 'video',
+          original_url: videoUrl,
+          author,
+          platform: 'youtube',
+          published_at: publishedAt,
+          summary,
+          full_content: videoContent.substring(0, 50000),
+          metadata: metadataPayload
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(`Database insert error: ${insertError.message}`);
+      }
+
+      savedContent = insertedContent;
     }
 
     console.log(`✅ Successfully saved video: ${title}`);

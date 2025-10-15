@@ -250,7 +250,7 @@ serve(async (req) => {
                         type: 'youtube',
                         title: item.snippet.title,
                         author: item.snippet.channelTitle,
-                        url: videoUrl,
+                        original_url: videoUrl,
                         status: 'processed'
                       });
                     } else {
@@ -459,7 +459,7 @@ serve(async (req) => {
                             type: 'podcast',
                             title: title,
                             author: detectedAuthor,
-                            url: episodeUrl,
+                            original_url: episodeUrl,
                             status: 'processed',
                             transcript_length: transcript.length,
                             guests: uniqueGuests
@@ -574,7 +574,7 @@ serve(async (req) => {
                           type: 'newsletter',
                           title: title,
                           author: source.influencer_name,
-                          url: link,
+                          original_url: link,
                           status: 'processed',
                           published_date: publishedDate
                         });
