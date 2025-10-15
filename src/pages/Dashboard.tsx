@@ -139,6 +139,66 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // New function to trigger content aggregation
+  const triggerContentSync = async () => {
+    if (!user) return;
+    
+    setIsSyncing(true);
+    
+    try {
+      console.log('Starting content aggregation...');
+      
+      // Call the content-aggregator Edge Function
+      const { data, error } = await supabase.functions.invoke('content-aggregator', {
+        body: {}
+      });
+      
+      if (error) {
+        console.error('Content aggregation error:', error);
+        toast({
+          title: "Sync Error",
+          description: error.message || "Failed to sync content",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Content aggregation results:', data);
+        
+        if (data?.processedCount > 0) {
+          console.log(`✅ Synced ${data.processedCount} new items`);
+          toast({
+            title: "Sync Complete",
+            description: `Successfully synced ${data.processedCount} new items`,
+          });
+        } else {
+          console.log('No new content found');
+          toast({
+            title: "Sync Complete",
+            description: "No new content found",
+          });
+        }
+        
+        if (data?.errors && data.errors.length > 0) {
+          console.warn('Some sources had errors:', data.errors);
+        }
+        
+        // Wait a moment for the database to update
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Now fetch the updated content to display it
+        await fetchContentItems({ showSyncIndicator: false });
+      }
+    } catch (error) {
+      console.error('Sync failed:', error);
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync content. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Fetch content items from database and subscribe for updates
   useEffect(() => {
     if (!user) return;
@@ -515,7 +575,7 @@ const Dashboard = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => fetchContentItems({ showSyncIndicator: true })}
+                onClick={triggerContentSync}
                 disabled={isSyncing}
               >
                 <TrendingUp className="h-4 w-4 mr-2" />
