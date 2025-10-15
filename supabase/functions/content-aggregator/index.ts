@@ -236,11 +236,13 @@ serve(async (req) => {
                       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
                     );
 
+                    // ✅ FIXED: Now passing sourceId to video-summarizer
                     const videoResponse = await invokeClient.functions.invoke('video-summarizer', {
                       body: {
                         videoUrl: videoUrl,
                         summaryLength: 'standard',
-                        userId: userId
+                        userId: userId,
+                        sourceId: source.id  // ← THIS IS THE FIX! Passing the source ID
                       }
                     });
 
@@ -258,7 +260,7 @@ serve(async (req) => {
                         source: source.influencer_name,
                         platform: 'youtube',
                         title: item.snippet.title,
-                        error: videoResponse.error || 'Failed to process video'
+                        error: videoResponse.data?.error || videoResponse.error || 'Failed to process video'
                       });
                     }
                   } else {
@@ -405,7 +407,8 @@ serve(async (req) => {
                             originalUrl: episodeUrl,
                             summaryLength: 'standard',
                             userId: userId,
-                            publishedDate: publishedDate
+                            publishedDate: publishedDate,
+                            sourceId: source.id  // Also pass sourceId for podcasts
                           }
                         });
 
@@ -564,7 +567,8 @@ serve(async (req) => {
                           originalUrl: link,
                           summaryLength: 'standard',
                           userId: userId,
-                          publishedDate: publishedDate
+                          publishedDate: publishedDate,
+                          sourceId: source.id  // Also pass sourceId for newsletters
                         }
                       });
 
