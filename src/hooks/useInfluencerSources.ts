@@ -61,12 +61,32 @@ export function useInfluencerSources() {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const sanitizedIdentifiers = Object.fromEntries(
-        Object.entries(platformIdentifiers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-      ) as Record<string, string>;
-
-      // Check if source already exists
+      // FIXED: Properly handle platform identifiers
+      // Keep existing identifiers if updating, merge with new ones
       const existing = influencerSources.find(source => source.influencer_name === influencerName);
+      
+      // Start with existing identifiers if updating, empty object if new
+      let finalIdentifiers: Record<string, string> = existing?.platform_identifiers || {};
+      
+      // Merge in new identifiers, only adding non-empty values
+      Object.entries(platformIdentifiers).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          finalIdentifiers[key] = value.trim();
+        }
+      });
+      
+      // Remove identifiers for platforms that are no longer selected
+      Object.keys(finalIdentifiers).forEach(platform => {
+        if (!selectedPlatforms.includes(platform)) {
+          delete finalIdentifiers[platform];
+        }
+      });
+
+      console.log('Saving to database:', {
+        influencerName,
+        selectedPlatforms,
+        platformIdentifiers: finalIdentifiers
+      });
 
       let data;
       let error;
@@ -78,7 +98,7 @@ export function useInfluencerSources() {
           .update({
             influencer_id: influencerId,
             selected_platforms: selectedPlatforms,
-            platform_identifiers: sanitizedIdentifiers
+            platform_identifiers: finalIdentifiers  // Use the merged identifiers
           })
           .eq('id', existing.id)
           .select()
@@ -95,7 +115,7 @@ export function useInfluencerSources() {
             influencer_id: influencerId,
             influencer_name: influencerName,
             selected_platforms: selectedPlatforms,
-            platform_identifiers: sanitizedIdentifiers
+            platform_identifiers: finalIdentifiers  // Use the merged identifiers
           })
           .select()
           .single();
@@ -104,8 +124,12 @@ export function useInfluencerSources() {
         error = result.error;
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
+      // Update local state
       setInfluencerSources(prev => {
         const normalizedData = {
           ...data,
@@ -117,6 +141,13 @@ export function useInfluencerSources() {
         } else {
           return [...prev, normalizedData];
         }
+      });
+
+      // Log success
+      console.log('Successfully saved source:', {
+        influencerName,
+        identifiers: finalIdentifiers,
+        platformCount: Object.keys(finalIdentifiers).length
       });
 
       toast({
