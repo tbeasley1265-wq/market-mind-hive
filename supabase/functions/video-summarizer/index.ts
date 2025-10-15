@@ -167,7 +167,7 @@ serve(async (req) => {
   }
 
   try {
-    const { videoUrl, summaryLength = 'standard', userId } = await req.json();
+    const { videoUrl, summaryLength = 'standard', userId, sourceId } = await req.json();
     
     if (!videoUrl) {
       throw new Error('Video URL is required');
@@ -234,128 +234,133 @@ serve(async (req) => {
       
       console.log(`Video: ${title} by ${author}, published: ${publishedAt}`);
       
-      // Get video transcript
+      // Get video transcript - but don't fail if unavailable
+      let transcriptAvailable = false;
       try {
         videoContent = await getYouTubeTranscript(videoId);
+        transcriptAvailable = true;
         console.log(`Successfully fetched transcript: ${videoContent.length} chars`);
       } catch (transcriptError) {
         console.error('Failed to fetch transcript:', transcriptError);
-        throw new Error('This video does not have captions available. Please try a different video or enable captions on YouTube.');
+        // Don't throw - we'll still save the video with metadata only
+        videoContent = '';
       }
     } else {
       throw new Error('Currently only YouTube videos are supported');
     }
 
-    // Determine summary length instructions
-    let lengthInstruction = '';
-    switch (summaryLength) {
-      case 'brief':
-        lengthInstruction = 'Keep the summary very brief (2-3 sentences).';
-        break;
-      case 'detailed':
-        lengthInstruction = 'Provide a detailed summary with key insights, quotes, and timestamps if available (4-6 paragraphs).';
-        break;
-      default:
-        lengthInstruction = 'Provide a comprehensive but concise summary (2-3 paragraphs).';
-        break;
-    }
-
-    const openAIKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Generate AI summary
-    const summaryPrompt = `
-    ${lengthInstruction}
-
-    Analyze this video content and provide:
-    1. A summary of the main points discussed
-    2. Key financial insights and takeaways
-    3. Mentioned assets, companies, or important figures
-    4. Investment implications or market outlook
-    5. Overall sentiment (bullish/bearish/neutral)
-    6. Notable quotes or key statements
-
-    Video Content: ${videoContent.substring(0, 12000)}
-    `;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert financial analyst specializing in video content analysis. Focus on extracting actionable market insights and investment implications from video content.'
-          },
-          {
-            role: 'user',
-            content: summaryPrompt
-          }
-        ],
-        max_tokens: 1200,
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
-    }
-
-    const data = await response.json();
-    const summary = data.choices[0].message.content;
-
-    // Generate tags and sentiment
-    const tagPrompt = `Based on this video summary, extract relevant tags (max 6) and determine sentiment:
-    
-    ${summary}
-    
-    Return a JSON object with:
-    - tags: array of relevant financial/market tags
-    - sentiment: "bullish", "bearish", or "neutral"
-    `;
-
-    const tagResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a financial content tagger. Return only valid JSON.'
-          },
-          {
-            role: 'user',
-            content: tagPrompt
-          }
-        ],
-        max_tokens: 200,
-        temperature: 0.1,
-      }),
-    });
-
-    let tags = ['video'];
+    let summary = '';
+    let tags = ['youtube', 'video'];
     let sentiment = 'neutral';
 
-    if (tagResponse.ok) {
-      try {
-        const tagData = await tagResponse.json();
-        const extracted = JSON.parse(tagData.choices[0].message.content);
-        tags = [...tags, ...(extracted.tags || [])];
-        sentiment = extracted.sentiment || 'neutral';
-      } catch (e) {
-        console.error('Error parsing tags:', e);
+    // Only generate AI summary if we have transcript
+    if (videoContent && videoContent.length > 0) {
+      // Determine summary length instructions
+      let lengthInstruction = '';
+      switch (summaryLength) {
+        case 'brief':
+          lengthInstruction = 'Keep the summary very brief (2-3 sentences).';
+          break;
+        case 'detailed':
+          lengthInstruction = 'Provide a detailed summary with key insights, quotes, and timestamps if available (4-6 paragraphs).';
+          break;
+        default:
+          lengthInstruction = 'Provide a comprehensive but concise summary (2-3 paragraphs).';
+          break;
       }
+
+      const openAIKey = Deno.env.get('OPENAI_API_KEY');
+      if (openAIKey) {
+        // Generate AI summary
+        const summaryPrompt = `
+        ${lengthInstruction}
+
+        Analyze this video content and provide:
+        1. A summary of the main points discussed
+        2. Key financial insights and takeaways
+        3. Mentioned assets, companies, or important figures
+        4. Investment implications or market outlook
+        5. Overall sentiment (bullish/bearish/neutral)
+        6. Notable quotes or key statements
+
+        Video Content: ${videoContent.substring(0, 12000)}
+        `;
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert financial analyst specializing in video content analysis. Focus on extracting actionable market insights and investment implications from video content.'
+              },
+              {
+                role: 'user',
+                content: summaryPrompt
+              }
+            ],
+            max_tokens: 1200,
+            temperature: 0.3,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          summary = data.choices[0].message.content;
+
+          // Generate tags and sentiment
+          const tagPrompt = `Based on this video summary, extract relevant tags (max 6) and determine sentiment:
+          
+          ${summary}
+          
+          Return a JSON object with:
+          - tags: array of relevant financial/market tags
+          - sentiment: "bullish", "bearish", or "neutral"
+          `;
+
+          const tagResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a financial content tagger. Return only valid JSON.'
+                },
+                {
+                  role: 'user',
+                  content: tagPrompt
+                }
+              ],
+              max_tokens: 200,
+              temperature: 0.1,
+            }),
+          });
+
+          if (tagResponse.ok) {
+            try {
+              const tagData = await tagResponse.json();
+              const extracted = JSON.parse(tagData.choices[0].message.content);
+              tags = [...tags, ...(extracted.tags || [])];
+              sentiment = extracted.sentiment || 'neutral';
+            } catch (e) {
+              console.error('Error parsing tags:', e);
+            }
+          }
+        }
+      }
+    } else {
+      // No transcript available - create a basic summary from metadata
+      summary = `Video: "${title}" by ${author}. (Note: Automated transcript not available for this video)`;
     }
 
     const metadataPayload = {
@@ -363,12 +368,14 @@ serve(async (req) => {
       sentiment,
       processed_at: new Date().toISOString(),
       summary_length: summaryLength,
-      video_id: videoId
+      video_id: videoId,
+      has_transcript: videoContent.length > 0
     };
 
+    // Check if content already exists
     const { data: existingRows, error: existingLookupError } = await supabaseClient
       .from('content_items')
-      .select('id')
+      .select('id, source_id')
       .eq('user_id', actualUserId)
       .eq('original_url', videoUrl)
       .limit(1);
@@ -379,21 +386,32 @@ serve(async (req) => {
 
     let savedContent;
 
+    // Prepare the data object
+    const contentData = {
+      title,
+      author,
+      platform: 'youtube',
+      content_type: 'video',
+      original_url: videoUrl,
+      published_at: publishedAt,
+      summary,
+      full_content: videoContent.substring(0, 50000),
+      metadata: metadataPayload,
+      processing_status: videoContent.length > 0 ? 'completed' : 'no_transcript'
+    };
+
     if (existingRows && existingRows.length > 0) {
+      // Update existing record
       const existingItem = existingRows[0];
+      
+      // Only update source_id if provided and not already set
+      if (sourceId && !existingItem.source_id) {
+        contentData.source_id = sourceId;
+      }
+      
       const { data: updatedContent, error: updateError } = await supabaseClient
         .from('content_items')
-        .update({
-          title,
-          author,
-          platform: 'youtube',
-          content_type: 'video',
-          original_url: videoUrl,
-          published_at: publishedAt,
-          summary,
-          full_content: videoContent.substring(0, 50000),
-          metadata: metadataPayload
-        })
+        .update(contentData)
         .eq('id', existingItem.id)
         .select()
         .single();
@@ -404,20 +422,29 @@ serve(async (req) => {
 
       savedContent = updatedContent;
     } else {
+      // Insert new record - source_id is required for new records
+      if (!sourceId) {
+        // Try to find the source_id from influencer_sources
+        const { data: sources } = await supabaseClient
+          .from('influencer_sources')
+          .select('id')
+          .eq('user_id', actualUserId)
+          .limit(1);
+        
+        if (sources && sources.length > 0) {
+          contentData.source_id = sources[0].id;
+        } else {
+          throw new Error('No source_id provided and could not find a default source');
+        }
+      } else {
+        contentData.source_id = sourceId;
+      }
+      
+      contentData.user_id = actualUserId;
+      
       const { data: insertedContent, error: insertError } = await supabaseClient
         .from('content_items')
-        .insert({
-          user_id: actualUserId,
-          title,
-          content_type: 'video',
-          original_url: videoUrl,
-          author,
-          platform: 'youtube',
-          published_at: publishedAt,
-          summary,
-          full_content: videoContent.substring(0, 50000),
-          metadata: metadataPayload
-        })
+        .insert(contentData)
         .select()
         .single();
 
@@ -440,7 +467,8 @@ serve(async (req) => {
           summary,
           tags,
           sentiment,
-          publishedAt
+          publishedAt,
+          hasTranscript: videoContent.length > 0
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -450,7 +478,7 @@ serve(async (req) => {
     console.error('Error in video-summarizer function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: errorMessage, processed: false }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
