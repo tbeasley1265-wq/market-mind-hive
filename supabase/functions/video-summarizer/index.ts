@@ -167,8 +167,30 @@ serve(async (req) => {
   }
 
   try {
-    const { videoUrl, summaryLength = 'standard', userId, sourceId } = await req.json();
-    
+    const requestBody = await req.json();
+    let {
+      videoUrl,
+      summaryLength = 'standard',
+      userId,
+      sourceId,
+      debugTest = false
+    } = requestBody;
+
+    console.log('📥 Received request payload:', JSON.stringify({
+      videoUrl,
+      summaryLength,
+      userId,
+      sourceId,
+      debugTest
+    }, null, 2));
+
+    if (debugTest) {
+      const fallbackDebugUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+      console.log('🧪 Debug mode enabled. Overriding video URL and skipping transcript fetching.');
+      videoUrl = fallbackDebugUrl;
+      summaryLength = 'brief';
+    }
+
     if (!videoUrl) {
       throw new Error('Video URL is required');
     }
@@ -179,6 +201,7 @@ serve(async (req) => {
 
     if (userId) {
       // Service role client for cron jobs
+      console.log('🔐 Using service role client for provided userId.');
       supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -191,6 +214,7 @@ serve(async (req) => {
         throw new Error('No authorization header provided');
       }
 
+      console.log('🔐 Using anon key client with provided Authorization header.');
       supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -225,26 +249,33 @@ serve(async (req) => {
       }
       
       console.log(`Processing YouTube video: ${videoId}`);
-      
+      console.log('🎯 Extracted video ID:', videoId);
+
       // Get video metadata (title, author, publishedAt)
       const metadata = await getYouTubeMetadata(videoId);
       title = metadata.title;
       author = metadata.author;
       publishedAt = metadata.publishedAt;
-      
+
       console.log(`Video: ${title} by ${author}, published: ${publishedAt}`);
-      
+      console.log('🎬 Metadata retrieved:', JSON.stringify(metadata, null, 2));
+
       // Get video transcript - but don't fail if unavailable
       let transcriptAvailable = false;
-      try {
-        videoContent = await getYouTubeTranscript(videoId);
-        transcriptAvailable = true;
-        console.log(`Successfully fetched transcript: ${videoContent.length} chars`);
-      } catch (transcriptError) {
-        console.error('Failed to fetch transcript:', transcriptError);
-        // Don't throw - we'll still save the video with metadata only
-        videoContent = '';
+      if (debugTest) {
+        console.log('🧪 Debug mode: Skipping transcript fetch step.');
+      } else {
+        try {
+          videoContent = await getYouTubeTranscript(videoId);
+          transcriptAvailable = true;
+          console.log(`Successfully fetched transcript: ${videoContent.length} chars`);
+        } catch (transcriptError) {
+          console.error('Failed to fetch transcript:', transcriptError);
+          // Don't throw - we'll still save the video with metadata only
+          videoContent = '';
+        }
       }
+      console.log('🧾 Transcript availability flag:', transcriptAvailable);
     } else {
       throw new Error('Currently only YouTube videos are supported');
     }
@@ -254,7 +285,7 @@ serve(async (req) => {
     let sentiment = 'neutral';
 
     // Only generate AI summary if we have transcript
-    if (videoContent && videoContent.length > 0) {
+    if (!debugTest && videoContent && videoContent.length > 0) {
       // Determine summary length instructions
       let lengthInstruction = '';
       switch (summaryLength) {
@@ -384,6 +415,8 @@ serve(async (req) => {
       throw new Error(`Database lookup error: ${existingLookupError.message}`);
     }
 
+    console.log('🔎 Existing content lookup result:', JSON.stringify(existingRows, null, 2));
+
     let savedContent;
 
     // Prepare the data object
@@ -400,15 +433,30 @@ serve(async (req) => {
       processing_status: videoContent.length > 0 ? 'completed' : 'no_transcript'
     };
 
+    console.log('📦 Prepared content payload:', JSON.stringify({
+      title: contentData.title,
+      author: contentData.author,
+      platform: contentData.platform,
+      content_type: contentData.content_type,
+      original_url: contentData.original_url,
+      published_at: contentData.published_at,
+      summary_preview: contentData.summary?.substring(0, 200),
+      full_content_length: contentData.full_content?.length || 0,
+      metadata: metadataPayload,
+      user_id: actualUserId,
+      provided_source_id: sourceId,
+      existing_source_id: existingRows && existingRows[0]?.source_id
+    }, null, 2));
+
     if (existingRows && existingRows.length > 0) {
       // Update existing record
       const existingItem = existingRows[0];
-      
+
       // Only update source_id if provided and not already set
       if (sourceId && !existingItem.source_id) {
         contentData.source_id = sourceId;
       }
-      
+
       const { data: updatedContent, error: updateError } = await supabaseClient
         .from('content_items')
         .update(contentData)
@@ -455,32 +503,50 @@ serve(async (req) => {
       savedContent = insertedContent;
     }
 
+    console.log('📥 Database insert/update result:', JSON.stringify({
+      id: savedContent?.id,
+      user_id: savedContent?.user_id,
+      source_id: savedContent?.source_id,
+      processing_status: savedContent?.processing_status,
+      created_at: savedContent?.created_at,
+      updated_at: savedContent?.updated_at
+    }, null, 2));
+
     console.log(`✅ Successfully saved video: ${title}`);
 
+    const responsePayload = {
+      processed: true,
+      data: {
+        id: savedContent.id,
+        title,
+        author,
+        summary,
+        tags,
+        sentiment,
+        publishedAt,
+        hasTranscript: videoContent.length > 0,
+        debugTest
+      }
+    };
+
+    console.log('📤 About to return:', JSON.stringify(responsePayload, null, 2));
+
     return new Response(
-      JSON.stringify({
-        processed: true,
-        data: {
-          id: savedContent.id,
-          title,
-          author,
-          summary,
-          tags,
-          sentiment,
-          publishedAt,
-          hasTranscript: videoContent.length > 0
-        }
-      }),
+      JSON.stringify(responsePayload),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error in video-summarizer function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('📛 Error details:', JSON.stringify({
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : null
+    }, null, 2));
     return new Response(
       JSON.stringify({ error: errorMessage, processed: false }),
-      { 
-        status: 500, 
+      {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
