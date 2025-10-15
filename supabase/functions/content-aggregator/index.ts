@@ -246,6 +246,11 @@ serve(async (req) => {
                       }
                     });
 
+                    console.log('Video summarizer full response:', JSON.stringify(videoResponse, null, 2));
+                    console.log('Response data:', videoResponse.data);
+                    console.log('Response error:', videoResponse.error);
+                    console.log('Processed flag:', videoResponse.data?.processed);
+
                     if (videoResponse.data?.processed) {
                       processedCount++;
                       results.push({
