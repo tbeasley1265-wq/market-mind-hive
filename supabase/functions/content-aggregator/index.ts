@@ -221,14 +221,15 @@ serve(async (req) => {
                 for (const item of searchData.items || []) {
                   const videoUrl = `https://www.youtube.com/watch?v=${item.id.videoId}`;
                   
-                  const { data: existing } = await supabaseClient
+                  // FIXED: Properly check for existing videos without .single()
+                  const { data: existing, error: checkError } = await supabaseClient
                     .from('content_items')
                     .select('id')
                     .eq('original_url', videoUrl)
-                    .eq('user_id', userId)
-                    .single();
+                    .eq('user_id', userId);
 
-                  if (!existing) {
+                  // Check if no existing videos found
+                  if (!existing || existing.length === 0) {
                     console.log(`Processing new YouTube video: ${item.snippet.title}`);
                     
                     const invokeClient = createClient(
@@ -236,13 +237,12 @@ serve(async (req) => {
                       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
                     );
 
-                    // ✅ FIXED: Now passing sourceId to video-summarizer
                     const videoResponse = await invokeClient.functions.invoke('video-summarizer', {
                       body: {
                         videoUrl: videoUrl,
                         summaryLength: 'standard',
                         userId: userId,
-                        sourceId: source.id  // ← THIS IS THE FIX! Passing the source ID
+                        sourceId: source.id
                       }
                     });
 
@@ -340,14 +340,14 @@ serve(async (req) => {
                       }
                     }
 
-                    const { data: existing } = await supabaseClient
+                    // FIXED: Properly check for existing podcasts without .single()
+                    const { data: existing, error: checkError } = await supabaseClient
                       .from('podcast_episodes')
                       .select('id')
                       .eq('episode_url', episodeUrl)
-                      .eq('user_id', userId)
-                      .single();
+                      .eq('user_id', userId);
 
-                    if (!existing) {
+                    if (!existing || existing.length === 0) {
                       console.log(`Processing new podcast episode: ${title}`);
                       
                       try {
@@ -543,14 +543,14 @@ serve(async (req) => {
                       }
                     }
 
-                    const { data: existing } = await supabaseClient
+                    // FIXED: Properly check for existing newsletters without .single()
+                    const { data: existing, error: checkError } = await supabaseClient
                       .from('content_items')
                       .select('id')
                       .eq('original_url', link)
-                      .eq('user_id', userId)
-                      .single();
+                      .eq('user_id', userId);
 
-                    if (!existing) {
+                    if (!existing || existing.length === 0) {
                       console.log(`Processing new newsletter article: ${title}`);
                       
                       const invokeClient = createClient(
