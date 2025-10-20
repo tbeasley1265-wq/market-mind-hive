@@ -67,111 +67,77 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Replace your fetchContentItems function with this fixed version
+  const fetchContentItems = useCallback(async (options?: { showSyncIndicator?: boolean }) => {
+    if (!user) return;
 
-const fetchContentItems = useCallback(async (options?: { showSyncIndicator?: boolean }) => {
-  if (!user) return;
-
-  if (options?.showSyncIndicator && isMountedRef.current) {
-    setIsSyncing(true);
-  }
-
-  try {
-    // Fetch content items with better error handling
-    const { data: contentData, error: contentError } = await supabase
-      .from('content_items')
-      .select('*, folders(name, color), influencer_sources(influencer_name)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }); // Use created_at as primary sort
-
-    if (contentError) {
-      console.error('Error fetching content:', contentError);
-      // Don't throw, just log it
+    if (options?.showSyncIndicator && isMountedRef.current) {
+      setIsSyncing(true);
     }
 
-    // Fetch email items (keep this as is)
-    const { data: emailData, error: emailError } = await supabase
-      .from('email_items' as any)
-      .select('*')
-      .eq('user_id', user.id)
-      .order('received_at', { ascending: false })
-      .limit(50);
+    try {
+      // Fetch content items - REMOVE the influencer_sources join that's breaking old content
+      const { data: contentData, error: contentError } = await supabase
+        .from('content_items')
+        .select('*, folders(name, color)')  // REMOVED influencer_sources join
+        .eq('user_id', user.id)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
 
-    if (emailError) {
-      console.error('Error fetching emails:', emailError);
-      // Don't throw, just log it
-    }
+      if (contentError) throw contentError;
 
-    // Transform content items with better null handling
-    const transformedContent = (contentData || []).map((item: any) => ({
-      id: item.id,
-      user_id: item.user_id,
-      title: item.title || 'Untitled',
-      content_type: item.content_type || 'article',
-      platform: item.platform || 'unknown',
-      author: item.author || item.influencer_sources?.influencer_name || 'Unknown',
-      summary: item.summary || item.full_content?.substring(0, 200) || '',
-      metadata: item.metadata || {},
-      original_url: item.original_url,
-      is_bookmarked: item.is_bookmarked || false,
-      created_at: item.created_at,
-      published_at: item.published_at || item.created_at, // Fallback to created_at
-      folder_id: item.folder_id,
-      folders: item.folders,
-      source_id: item.source_id,
-      processing_status: item.processing_status
-    }));
+      // Fetch email items
+      const { data: emailData, error: emailError } = await supabase
+        .from('email_items' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('received_at', { ascending: false })
+        .limit(50);
 
-    // Transform email items to match content item structure
-    const transformedEmails = (emailData || []).map((email: any) => ({
-      id: email.id,
-      user_id: email.user_id,
-      title: email.subject || 'No Subject',
-      content_type: 'email',
-      platform: 'gmail',
-      author: email.from_address || 'Unknown Sender',
-      summary: email.snippet || email.full_content?.substring(0, 200) || '',
-      metadata: {
-        category: email.category,
-        emailId: email.email_id
-      },
-      original_url: null,
-      is_bookmarked: false,
-      created_at: email.received_at,
-      published_at: email.received_at,
-      folder_id: null,
-      folders: null
-    }));
+      if (emailError) throw emailError;
 
-    // Combine and sort by date with better null handling
-    const combinedContent = [...transformedContent, ...transformedEmails].sort((a, b) => {
-      const dateA = new Date(a.published_at || a.created_at || 0).getTime();
-      const dateB = new Date(b.published_at || b.created_at || 0).getTime();
-      return dateB - dateA;
-    });
+      // Transform email items to match content item structure
+      const transformedEmails = (emailData || []).map((email: any) => ({
+        id: email.id,
+        user_id: email.user_id,
+        title: email.subject,
+        content_type: 'email',
+        platform: 'gmail',
+        author: email.from_address,
+        summary: email.snippet || email.full_content?.substring(0, 200),
+        metadata: {
+          category: email.category,
+          emailId: email.email_id
+        },
+        original_url: null,
+        is_bookmarked: false,
+        created_at: email.received_at,
+        published_at: email.received_at,
+        folder_id: null,
+        folders: null
+      }));
 
-    console.log(`Fetched ${transformedContent.length} content items and ${transformedEmails.length} emails`);
+      // Combine and sort by date
+      const combinedContent = [...(contentData || []), ...transformedEmails].sort((a, b) => {
+        const dateA = new Date(a.published_at || a.created_at).getTime();
+        const dateB = new Date(b.published_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
 
-    if (isMountedRef.current) {
-      setContentItems(combinedContent);
-      setLastSyncTime(new Date());
-    }
-  } catch (error) {
-    console.error('Error in fetchContentItems:', error);
-    toast({
-      title: "Error",
-      description: "Failed to fetch content. Please refresh the page.",
-      variant: "destructive"
-    });
-  } finally {
-    if (isMountedRef.current) {
-      setLoading(false);
-      if (options?.showSyncIndicator) {
-        setIsSyncing(false);
+      if (isMountedRef.current) {
+        setContentItems(combinedContent);
+        setLastSyncTime(new Date());
+      }
+    } catch (error) {
+      console.error('Error fetching content:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+        if (options?.showSyncIndicator) {
+          setIsSyncing(false);
+        }
       }
     }
-  }
-}, [user, toast]);
+  }, [user]);
 
   // New function to trigger content aggregation
   const triggerContentSync = async () => {
